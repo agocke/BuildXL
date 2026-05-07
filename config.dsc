@@ -15,6 +15,7 @@ config({
         ...globR(d`Private/InternalSdk`, "module.config.dsc"),
         ...globR(d`Private/Tools`, "module.config.dsc"),
         ...globR(d`Public/Sdk/SelfHost`, "module.config.dsc"),
+        ...globR(d`Examples/RulesCs`, "module.config.dsc"),
     ],
 
     frontEnd: {
