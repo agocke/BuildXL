@@ -20,6 +20,7 @@
 // per-rule, and per-target visibility are out of scope for the prototype.
 // =============================================================================
 
+import * as Rules      from "Sdk.Rules";
 import * as Managed    from "Sdk.Managed";
 import * as Shared     from "Sdk.Managed.Shared";
 import * as Frameworks from "Sdk.Managed.Frameworks";
@@ -31,15 +32,17 @@ export declare const qualifier : Shared.TargetFrameworks.All;
 // -----------------------------------------------------------------------------
 
 /**
- * Provider returned by every C# rule. Rules consume each other by reading
- * fields off this record - never by reading raw output paths.
+ * Provider returned by every C# rule. Extends the generic DefaultInfo so that
+ * any language-agnostic tool (packager, deployer) can consume `.files` and
+ * `.runfiles` without importing this SDK.
  *
- * Keeping the underlying Managed.Assembly inside the provider lets a downstream
- * rule (e.g. csharpBinary) feed it back in as a reference without the BUILD
- * file ever touching a File or PathAtom.
+ * Rules consume each other by reading fields off this record - never by
+ * reading raw output paths. Keeping the underlying Managed.Assembly inside
+ * the provider lets a downstream rule (e.g. csharpBinary) feed it back in as
+ * a reference without the BUILD file ever touching a File or PathAtom.
  */
 @@public
-export interface CsInfo {
+export interface CsInfo extends Rules.DefaultInfo {
     /** Logical name of the target (matches the assembly name). */
     name: string;
 
@@ -54,9 +57,10 @@ export interface CsInfo {
 }
 
 /**
- * Provider returned by csharpBinary. Extends CsInfo with an executable handle
- * and the runtime assembly closure, so a runner / packager can find what to
- * actually launch without inspecting paths.
+ * Provider returned by csharpBinary. Extends CsInfo with an executable handle.
+ * The `runfiles` field (inherited from DefaultInfo) is populated with the
+ * transitive runtime assembly closure, so a runner / packager can find what to
+ * actually deploy without inspecting paths.
  */
 @@public
 export interface CsBinaryInfo extends CsInfo {
@@ -145,9 +149,20 @@ export function csharpBinary(args: CsBinaryAttrs): CsBinaryInfo {
     const result = Managed.executable(managedArgs);
     const base = makeProvider(args, result);
 
+    // Populate runfiles with the transitive runtime closure so that any
+    // generic deployment tool can find everything needed to run the binary.
+    const runtimeFiles = Rules.depsetFiles(
+        base,
+        info => info.deps,
+        info => info.name,
+        info => info.files
+    );
+
     return base.merge<CsBinaryInfo>({
+        kind: "CsBinaryInfo",
         executable: Shared.getExecutable(result),
         runtimeConfigFiles: result.runtimeConfigFiles || [],
+        runfiles: runtimeFiles,
     });
 }
 
@@ -181,10 +196,12 @@ function toManagedArgs(args: CsCommonAttrs, isExe: boolean): Managed.Arguments {
 /** Wrap a Managed.Result into the CsInfo provider record. */
 function makeProvider(args: CsCommonAttrs, result: Managed.Result): CsInfo {
     return {
+        kind:            "CsInfo",
         name:            args.name,
         targetFramework: result.targetFramework,
         assembly:        result,
         deps:            args.deps || [],
+        files:           [result.binary],
     };
 }
 
@@ -194,26 +211,12 @@ function makeProvider(args: CsCommonAttrs, result: Managed.Result): CsInfo {
 
 /**
  * Walks a CsInfo provider and its transitive `deps`, returning a deduplicated
- * list of providers in dependency order. This is the small "depset" stand-in
- * mentioned in the design notes - good enough for a prototype.
+ * list of providers in dependency order.
+ *
+ * This delegates to the generic `depset` helper from Sdk.Rules — the same
+ * pattern works for any language's provider graph.
  */
 @@public
 export function transitiveClosure(info: CsInfo): CsInfo[] {
-    return visit(info, { seen: Set.empty<string>(), out: [] }).out;
-}
-
-interface ClosureState {
-    seen: Set<string>;
-    out: CsInfo[];
-}
-
-function visit(node: CsInfo, state: ClosureState): ClosureState {
-    if (state.seen.contains(node.name)) {
-        return state;
-    }
-    let next: ClosureState = { seen: state.seen.add(node.name), out: state.out };
-    for (const d of node.deps) {
-        next = visit(d, next);
-    }
-    return { seen: next.seen, out: next.out.push(node) };
+    return Rules.depset(info, node => node.deps, node => node.name);
 }
