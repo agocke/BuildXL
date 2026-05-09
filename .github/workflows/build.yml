@@ -9,6 +9,8 @@ on:
 jobs:
   build-linux:
     runs-on: ubuntu-latest
+    permissions:
+      packages: write
     steps:
       - uses: actions/checkout@v4
 
@@ -17,8 +19,23 @@ jobs:
         with:
           dotnet-version: '9.x'
 
-      - name: Build (minimal)
+      - name: Build packages
         run: |
-          ./bxl.sh --minimal /server- \
+          ./bxl.sh /server- \
+            /q:ReleaseLinux \
             "/p:[Sdk.BuildXL]buildEBPFSandbox=0" \
-            /EnableLinuxEBPFSandbox-
+            /EnableLinuxEBPFSandbox- \
+            "/f:output='*public/pkgs/*'"
+
+      - name: Publish to GitHub Packages
+        if: github.event_name == 'push'
+        run: |
+          dotnet nuget add source \
+            "https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json" \
+            --name github \
+            --username ${{ github.repository_owner }} \
+            --password ${{ secrets.GITHUB_TOKEN }} \
+            --store-password-in-clear-text
+          for pkg in Out/Bin/release/public/pkgs/Microsoft.BuildXL.Tool*.nupkg; do
+            dotnet nuget push "$pkg" --source github --skip-duplicate
+          done
