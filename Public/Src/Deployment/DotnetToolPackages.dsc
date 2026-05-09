@@ -34,12 +34,21 @@ namespace DotnetToolPackages {
         runner: "dotnet",
     };
 
-    function getAppDeployment(targetRuntime: "win-x64" | "osx-x64" | "linux-x64"): Deployment.Definition {
-        return importFrom("BuildXL.App").withQualifier({
-            targetFramework: defaultTargetFramework,
-            targetRuntime: targetRuntime
-        }).deployment;
-    }
+    // App deployments for each RID
+    const winX64Deployment = importFrom("BuildXL.App").withQualifier({
+        targetFramework: defaultTargetFramework,
+        targetRuntime: "win-x64"
+    }).deployment;
+
+    const osxX64Deployment = importFrom("BuildXL.App").withQualifier({
+        targetFramework: defaultTargetFramework,
+        targetRuntime: "osx-x64"
+    }).deployment;
+
+    const linuxX64Deployment = importFrom("BuildXL.App").withQualifier({
+        targetFramework: defaultTargetFramework,
+        targetRuntime: "linux-x64"
+    }).deployment;
 
     function makeToolDescription(rid: string): string {
         return `BuildXL dotnet tool (${rid}). ${Branding.shortProductName} is a build engine for large-scale distributed, cached, and incremental builds.`;
@@ -49,7 +58,7 @@ namespace DotnetToolPackages {
     const winX64Tool = !canBuildAllPackagesOnThisHost ? undefined : RidPack.packToolRidPackage({
         id: `${toolPackageId}.win-x64`,
         version: Branding.Nuget.packageVersion,
-        deployment: getAppDeployment("win-x64"),
+        deployment: winX64Deployment,
         targetFramework: defaultTargetFramework,
         rid: "win-x64",
         commands: [toolCommand],
@@ -65,7 +74,7 @@ namespace DotnetToolPackages {
     const osxX64Tool = RidPack.packToolRidPackage({
         id: `${toolPackageId}.osx-x64`,
         version: Branding.Nuget.packageVersion,
-        deployment: getAppDeployment("osx-x64"),
+        deployment: osxX64Deployment,
         targetFramework: defaultTargetFramework,
         rid: "osx-x64",
         commands: [toolCommand],
@@ -80,7 +89,7 @@ namespace DotnetToolPackages {
     const linuxX64Tool = RidPack.packToolRidPackage({
         id: `${toolPackageId}.linux-x64`,
         version: Branding.Nuget.packageVersion,
-        deployment: getAppDeployment("linux-x64"),
+        deployment: linuxX64Deployment,
         targetFramework: defaultTargetFramework,
         rid: "linux-x64",
         commands: [toolCommand],

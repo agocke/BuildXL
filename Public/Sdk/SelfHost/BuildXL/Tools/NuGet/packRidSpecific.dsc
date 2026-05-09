@@ -8,7 +8,7 @@ import * as Deployment              from "Sdk.Deployment";
 import * as Managed                 from "Sdk.Managed.Shared";
 import * as Xml                     from "Sdk.Xml";
 
-const tool: Transformer.ToolDefinition = getNugetPackerTool();
+const ridPackTool: Transformer.ToolDefinition = getNugetPackerTool();
 
 function getNugetPackerTool(): Transformer.ToolDefinition {
     switch (Context.getCurrentHost().os) {
@@ -136,7 +136,7 @@ export interface PackToolPointerPackageArgs {
 }
 
 @@public
-export interface PackResult {
+export interface ToolPackResult {
     nuPkg: File;
 }
 
@@ -151,7 +151,7 @@ export interface PackResult {
  * Nuspec package type: DotnetToolRidPackage
  */
 @@public
-export function packToolRidPackage(args: PackToolRidPackageArgs): PackResult {
+export function packToolRidPackage(args: PackToolRidPackageArgs): ToolPackResult {
     const outDir = Context.getNewOutputDirectory("dotnet-tool-rid-pack");
     const packName = `${args.id}.${args.version}`;
     const nuspecPath = p`${outDir}/${packName + ".nuspec"}`;
@@ -202,7 +202,7 @@ export function packToolRidPackage(args: PackToolRidPackageArgs): PackResult {
     ];
 
     const execArgs = <Transformer.ExecuteArguments>{
-        tool: tool,
+        tool: ridPackTool,
         tags: ["pack", "dotnet-tool"],
         arguments: arguments,
         workingDirectory: outDir,
@@ -239,7 +239,7 @@ export function packToolRidPackage(args: PackToolRidPackageArgs): PackResult {
  * Nuspec package type: DotnetTool
  */
 @@public
-export function packToolPointerPackage(args: PackToolPointerPackageArgs): PackResult {
+export function packToolPointerPackage(args: PackToolPointerPackageArgs): ToolPackResult {
     const outDir = Context.getNewOutputDirectory("dotnet-tool-pointer-pack");
     const packName = `${args.id}.${args.version}`;
     const nuspecPath = p`${outDir}/${packName + ".nuspec"}`;
@@ -287,7 +287,7 @@ export function packToolPointerPackage(args: PackToolPointerPackageArgs): PackRe
     ];
 
     const execArgs = <Transformer.ExecuteArguments>{
-        tool: tool,
+        tool: ridPackTool,
         tags: ["pack", "dotnet-tool"],
         arguments: arguments,
         workingDirectory: outDir,
