@@ -11,9 +11,11 @@ namespace eBPFSandbox {
     };
 
     // Kernel 6.6+ is required to build the eBPF sandbox.
+    // Pass /p:[Sdk.BuildXL]buildEBPFSandbox=0 to disable building even on supported kernels.
     // TODO: The inbox dscript SDK has support for this, remove this once the dscript SDK is updated.
     @@public
     export const hostSupportsBuildingEBPF = Context.getCurrentHost().os === "unix"
+        && importFrom("Sdk.BuildXL").Flags.buildEBPFSandbox
         && (Environment.hasVariable("MAJOR_KERNEL_VERSION") && Environment.getNumberValue("MAJOR_KERNEL_VERSION") >= 6)
         && (Environment.hasVariable("MINOR_KERNEL_VERSION") && Environment.getNumberValue("MINOR_KERNEL_VERSION") >= 6);
 

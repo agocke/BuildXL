@@ -324,6 +324,13 @@ namespace Flags {
 
     @@public
     export const isExperimentalDeployment = Environment.getFlag(envVarNamePrefix + "experimentalDeployment");
+
+    /**
+     * Whether to build the eBPF sandbox. Defaults to true when the host supports it.
+     * Pass /p:[Sdk.BuildXL]buildEBPFSandbox=0 to disable.
+     */
+    @@public
+    export const buildEBPFSandbox = !Environment.hasVariable(envVarNamePrefix + "buildEBPFSandbox") || Environment.getFlag(envVarNamePrefix + "buildEBPFSandbox");
 }
 
 @@public

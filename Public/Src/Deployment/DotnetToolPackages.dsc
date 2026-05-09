@@ -35,7 +35,8 @@ namespace DotnetToolPackages {
     };
 
     // App deployments for each RID
-    const winX64Deployment = importFrom("BuildXL.App").withQualifier({
+    // win-x64 deployment can only be built on Windows (MSVC native tools required)
+    const winX64Deployment = !canBuildAllPackagesOnThisHost ? undefined : importFrom("BuildXL.App").withQualifier({
         targetFramework: defaultTargetFramework,
         targetRuntime: "win-x64"
     }).deployment;

@@ -13,9 +13,10 @@ namespace Deployment {
             // CODESYNC: .azdo/rolling/jobs/linux.yml
             // This environment variable may be set by ADO to provide an alternative deployment for the eBPF binaries built on a different host.
             // This is necessary when building on older kernels that don't support eBPF.
-            Environment.hasVariable("BuildXLEbpfSandboxDeploymentOverridePath")
-                ? f`${Environment.getPathValue("BuildXLEbpfSandboxDeploymentOverridePath")}/${qualifier.configuration}/${qualifier.targetRuntime}/bxl-ebpf-runner`
-                : eBPFSandbox.sandbox
+            ...addIfLazy(Environment.hasVariable("BuildXLEbpfSandboxDeploymentOverridePath"), () => [
+                f`${Environment.getPathValue("BuildXLEbpfSandboxDeploymentOverridePath")}/${qualifier.configuration}/${qualifier.targetRuntime}/bxl-ebpf-runner`]),
+            ...addIfLazy(!Environment.hasVariable("BuildXLEbpfSandboxDeploymentOverridePath") && eBPFSandbox.hostSupportsBuildingEBPF, () => [
+                eBPFSandbox.sandbox]),
         ]
     };
 }
