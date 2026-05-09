@@ -1,0 +1,24 @@
+name: Build
+
+on:
+  push:
+    branches: [ runtime ]
+  pull_request:
+    branches: [ runtime ]
+
+jobs:
+  build-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.x'
+
+      - name: Build (minimal)
+        run: |
+          ./bxl.sh --minimal /server- \
+            "/p:[Sdk.BuildXL]buildEBPFSandbox=0" \
+            /EnableLinuxEBPFSandbox-
