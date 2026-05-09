@@ -649,6 +649,9 @@ namespace NugetPackages {
                 linuxX64,
                 processesLinux
             ]),
+
+            // Dotnet tool packages (RID-specific + pointer)
+            DotnetToolPackages.deployment,
         ]
     };
 

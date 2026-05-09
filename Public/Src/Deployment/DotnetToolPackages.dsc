@@ -1,0 +1,126 @@
+// Copyright (c) Microsoft. All rights reserved.
+// Licensed under the MIT license. See LICENSE file in the project root for full license information.
+
+import * as Branding from "BuildXL.Branding";
+import * as BuildXLSdk from "Sdk.BuildXL";
+import * as Deployment from "Sdk.Deployment";
+import * as Managed from "Sdk.Managed.Shared";
+import * as RidPack from "Sdk.BuildXL.Tools.NuGet";
+
+namespace DotnetToolPackages {
+    export declare const qualifier: { configuration: "debug" | "release" };
+
+    const defaultTargetFramework = Managed.TargetFrameworks.DefaultTargetFramework;
+
+    const canBuildAllPackagesOnThisHost = Context.getCurrentHost().os === "win";
+
+    const packageNamePrefix =
+        BuildXLSdk.Flags.isExperimentalDeployment
+            ? "BuildXL-experimental"
+            : BuildXLSdk.Flags.isMicrosoftInternal
+                ? "BuildXL"
+                : "Microsoft.BuildXL";
+
+    const toolPackageId = `${packageNamePrefix}.Tool`;
+
+    const reducedDeploymentOptions: Managed.Deployment.FlattenOptions = {
+        skipPdb: false,
+        skipXml: true,
+    };
+
+    const toolCommand: RidPack.ToolCommand = {
+        name: "bxl",
+        entryPoint: "bxl.dll",
+        runner: "dotnet",
+    };
+
+    function getAppDeployment(targetRuntime: "win-x64" | "osx-x64" | "linux-x64"): Deployment.Definition {
+        return importFrom("BuildXL.App").withQualifier({
+            targetFramework: defaultTargetFramework,
+            targetRuntime: targetRuntime
+        }).deployment;
+    }
+
+    function makeToolDescription(rid: string): string {
+        return `BuildXL dotnet tool (${rid}). ${Branding.shortProductName} is a build engine for large-scale distributed, cached, and incremental builds.`;
+    }
+
+    // RID-specific tool packages
+    const winX64Tool = !canBuildAllPackagesOnThisHost ? undefined : RidPack.packToolRidPackage({
+        id: `${toolPackageId}.win-x64`,
+        version: Branding.Nuget.packageVersion,
+        deployment: getAppDeployment("win-x64"),
+        targetFramework: defaultTargetFramework,
+        rid: "win-x64",
+        commands: [toolCommand],
+        authors: Branding.Nuget.packageAuthors,
+        owners: Branding.Nuget.packageOwners,
+        copyright: Branding.Nuget.packageCopyright,
+        description: makeToolDescription("win-x64"),
+        tags: `${Branding.company} ${Branding.shortProductName} Build Tool`,
+        deploymentOptions: reducedDeploymentOptions,
+        filterFiles: [a`DetoursServices.pdb`, a`BuildXLAria.pdb`, a`BuildXLNatives.pdb`],
+    });
+
+    const osxX64Tool = RidPack.packToolRidPackage({
+        id: `${toolPackageId}.osx-x64`,
+        version: Branding.Nuget.packageVersion,
+        deployment: getAppDeployment("osx-x64"),
+        targetFramework: defaultTargetFramework,
+        rid: "osx-x64",
+        commands: [toolCommand],
+        authors: Branding.Nuget.packageAuthors,
+        owners: Branding.Nuget.packageOwners,
+        copyright: Branding.Nuget.packageCopyright,
+        description: makeToolDescription("osx-x64"),
+        tags: `${Branding.company} ${Branding.shortProductName} Build Tool`,
+        deploymentOptions: reducedDeploymentOptions,
+    });
+
+    const linuxX64Tool = RidPack.packToolRidPackage({
+        id: `${toolPackageId}.linux-x64`,
+        version: Branding.Nuget.packageVersion,
+        deployment: getAppDeployment("linux-x64"),
+        targetFramework: defaultTargetFramework,
+        rid: "linux-x64",
+        commands: [toolCommand],
+        authors: Branding.Nuget.packageAuthors,
+        owners: Branding.Nuget.packageOwners,
+        copyright: Branding.Nuget.packageCopyright,
+        description: makeToolDescription("linux-x64"),
+        tags: `${Branding.company} ${Branding.shortProductName} Build Tool`,
+        deploymentOptions: reducedDeploymentOptions,
+    });
+
+    // Top-level pointer package
+    const pointerPackage = RidPack.packToolPointerPackage({
+        id: toolPackageId,
+        version: Branding.Nuget.packageVersion,
+        targetFramework: defaultTargetFramework,
+        commands: [toolCommand],
+        ridPackages: [
+            ...addIfLazy(canBuildAllPackagesOnThisHost, () => [
+                { rid: "win-x64", id: `${toolPackageId}.win-x64` },
+            ]),
+            { rid: "osx-x64", id: `${toolPackageId}.osx-x64` },
+            { rid: "linux-x64", id: `${toolPackageId}.linux-x64` },
+        ],
+        authors: Branding.Nuget.packageAuthors,
+        owners: Branding.Nuget.packageOwners,
+        copyright: Branding.Nuget.packageCopyright,
+        description: `BuildXL dotnet tool. ${Branding.shortProductName} is a build engine for large-scale distributed, cached, and incremental builds. Install with: dotnet tool install -g ${toolPackageId}`,
+        tags: `${Branding.company} ${Branding.shortProductName} Build Tool`,
+    });
+
+    @@public
+    export const deployment: Deployment.Definition = {
+        contents: [
+            ...addIfLazy(canBuildAllPackagesOnThisHost, () => [
+                winX64Tool.nuPkg,
+            ]),
+            osxX64Tool.nuPkg,
+            linuxX64Tool.nuPkg,
+            pointerPackage.nuPkg,
+        ]
+    };
+}
