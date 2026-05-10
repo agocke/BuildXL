@@ -151,6 +151,46 @@ interface DownloadSettings {
     extractedValueName?: string,
 }
 
+/**
+ * Resolver for downloading Git repositories and making their DScript modules available.
+ * Similar to Bazel's git_repository rule.
+ */
+interface GitRepositoryResolver extends ResolverBase {
+    kind: "GitRepository",
+    repositories: GitRepoSettings[]
+}
+
+/**
+ * Settings for a single Git repository to download
+ */
+interface GitRepoSettings {
+    /**
+     * The name of the module to expose. Used as the module name for importFrom().
+     */
+    moduleName: string,
+
+    /**
+     * The GitHub repository owner (user or organization)
+     */
+    owner: string,
+
+    /**
+     * The GitHub repository name
+     */
+    repository: string,
+
+    /**
+     * The full 40-character commit SHA to download. Required for reproducibility.
+     */
+    commit: string,
+
+    /**
+     * Optional hash of the downloaded archive to ensure integrity.
+     * When specified the download is validated against this hash.
+     */
+    hash?: string,
+}
+
 /** We represent a passthrough environment variable with the value unit */ 
 type PassthroughEnvironmentVariable = Unit;
 
