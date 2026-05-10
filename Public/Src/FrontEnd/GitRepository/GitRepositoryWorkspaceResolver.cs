@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Diagnostics.ContractsLight;
 using System.IO;
 using System.Linq;
@@ -18,6 +19,7 @@ using BuildXL.Utilities;
 using BuildXL.Utilities.Core;
 using BuildXL.Utilities.Configuration;
 using ICSharpCode.SharpZipLib.GZip;
+using TypeScript.Net.DScript;
 using ICSharpCode.SharpZipLib.Tar;
 using TypeScript.Net.Types;
 
@@ -269,7 +271,7 @@ namespace BuildXL.FrontEnd.GitRepository
 
             // We create a settings object that points the embedded source resolver at the extracted roots.
             // Each root should contain module.config.bm or module.config.dsc files.
-            var settings = new Configuration.Mutable.DScriptResolverSettings
+            var settings = new BuildXL.Utilities.Configuration.Mutable.DScriptResolverSettings
             {
                 Name = Name + ".Embedded",
                 Kind = KnownResolverKind.DScriptResolverKind,

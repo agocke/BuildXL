@@ -12,9 +12,11 @@ using BuildXL.FrontEnd.Script;
 using BuildXL.FrontEnd.Script.Evaluator;
 using BuildXL.FrontEnd.Sdk;
 using BuildXL.FrontEnd.Sdk.Evaluation;
+using BuildXL.FrontEnd.Sdk.Mutable;
 using BuildXL.FrontEnd.Sdk.Workspaces;
 using BuildXL.FrontEnd.Utilities;
 using BuildXL.FrontEnd.Workspaces.Core;
+using BuildXL.Utilities.Core;
 using BuildXL.Utilities.Configuration;
 using static BuildXL.Utilities.Core.FormattableStringEx;
 
