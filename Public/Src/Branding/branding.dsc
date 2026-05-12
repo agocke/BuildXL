@@ -3,7 +3,7 @@
 
 import {Transformer} from "Sdk.Transformers";
 
-export const explicitSemanticVersion = "0.1.0";
+export const explicitSemanticVersion = "0.2.0";
 
 export declare const qualifier: {};
 
