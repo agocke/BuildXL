@@ -16,12 +16,14 @@ namespace DotnetToolPackages {
 
     const packageNamePrefix =
         BuildXLSdk.Flags.isExperimentalDeployment
-            ? "BuildXL-experimental"
+            ? "agtest.bxl"
             : BuildXLSdk.Flags.isMicrosoftInternal
                 ? "BuildXL"
                 : "Microsoft.BuildXL";
 
-    const toolPackageId = `${packageNamePrefix}.Tool`;
+    const toolPackageId = BuildXLSdk.Flags.isExperimentalDeployment
+        ? `${packageNamePrefix}.tool`
+        : `${packageNamePrefix}.Tool`;
 
     const reducedDeploymentOptions: Managed.Deployment.FlattenOptions = {
         skipPdb: false,

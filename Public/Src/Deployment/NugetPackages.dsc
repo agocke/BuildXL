@@ -65,7 +65,7 @@ namespace NugetPackages {
 
     const packageNamePrefix = 
         BuildXLSdk.Flags.isExperimentalDeployment
-        ? "BuildXL-experimental" 
+        ? "agtest.bxl" 
         : BuildXLSdk.Flags.isMicrosoftInternal
         ? "BuildXL"
         : "Microsoft.BuildXL";
