@@ -81,6 +81,8 @@ namespace BuildXL.Utilities.Configuration.Mutable
                     return new LageResolverSettings(lageResolver, pathRemapper);
                 case INxResolverSettings nxResolver:
                     return new NxResolverSettings(nxResolver, pathRemapper);
+                case IGitRepoResolverSettings gitRepoResolver:
+                    return new GitRepoResolverSettings(gitRepoResolver, pathRemapper);
                 default:
                     Contract.Assume(false, "Unexpected type of resolver settings.");
                     return null;

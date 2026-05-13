@@ -1,0 +1,66 @@
+name: Publish to NuGet
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment: release
+    permissions:
+      id-token: write     # Required for OIDC token (NuGet trusted publishing)
+      contents: read
+      packages: read
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.x'
+
+      - name: Extract version from tag
+        id: version
+        run: echo "VERSION=${GITHUB_REF_NAME#v}" >> $GITHUB_OUTPUT
+
+      - name: Install bxl
+        run: |
+          printf '<?xml version="1.0" encoding="utf-8"?>\n<configuration>\n  <packageSources>\n    <add key="nuget.org" value="https://api.nuget.org/v3/index.json" />\n    <add key="github" value="https://nuget.pkg.github.com/agocke/index.json" />\n  </packageSources>\n  <packageSourceCredentials>\n    <github>\n      <add key="Username" value="agocke" />\n      <add key="ClearTextPassword" value="%s" />\n    </github>\n  </packageSourceCredentials>\n</configuration>\n' "$GITHUB_TOKEN" > /tmp/nuget.config
+          dotnet tool install -g agtest.bxl.tool \
+            --version "0.2.0-devBuild" \
+            --configfile /tmp/nuget.config
+        env:
+          DOTNET_NUGET_SIGNATURE_VERIFICATION: false
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build packages
+        run: |
+          bxl /c:config.dsc /server- \
+            /q:ReleaseLinux \
+            "/p:[Sdk.BuildXL]buildEBPFSandbox=0" \
+            /EnableLinuxEBPFSandbox- \
+            "/p:[Sdk.BuildXL]experimentalDeployment=1" \
+            "/p:MAJOR_KERNEL_VERSION=$(uname -r | cut -d'.' -f1)" \
+            "/p:MINOR_KERNEL_VERSION=$(uname -r | cut -d'.' -f2)" \
+            "/p:[BuildXL.Branding]SemanticVersion=${{ steps.version.outputs.VERSION }}" \
+            "/p:[BuildXL.Branding]PrereleaseTag=" \
+            "/f:spec='*DotnetToolPackages*'"
+
+      - name: Collect packages
+        run: |
+          mkdir -p ./artifacts
+          find Out -name "agtest.bxl*.nupkg" -exec cp {} ./artifacts/ \;
+          echo "Packages to publish:"
+          ls -la ./artifacts/
+
+      - name: NuGet login (OIDC)
+        id: login
+        uses: NuGet/login@v1
+        with:
+          user: ${{ secrets.NUGET_USER }}
+
+      - name: Push to NuGet
+        run: dotnet nuget push ./artifacts/*.nupkg --api-key ${{ steps.login.outputs.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json --skip-duplicate

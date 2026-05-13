@@ -9,6 +9,7 @@ using System.Threading.Tasks;
 using BuildXL.FrontEnd.Core;
 using BuildXL.FrontEnd.Download;
 using BuildXL.FrontEnd.Factory.Tracing;
+using BuildXL.FrontEnd.GitRepository;
 using BuildXL.FrontEnd.Rush;
 using BuildXL.FrontEnd.Yarn;
 using BuildXL.FrontEnd.Lage;
@@ -279,6 +280,7 @@ namespace BuildXL.FrontEnd.Factory
                 evaluationDecorator: decorator));
 
             frontEndFactory.AddFrontEnd(new DownloadFrontEnd());
+            frontEndFactory.AddFrontEnd(new GitRepositoryFrontEnd());
             frontEndFactory.AddFrontEnd(new RushFrontEnd());
             frontEndFactory.AddFrontEnd(new YarnFrontEnd());
             frontEndFactory.AddFrontEnd(new CustomYarnFrontEnd());

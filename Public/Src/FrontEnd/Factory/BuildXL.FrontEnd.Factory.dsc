@@ -22,6 +22,7 @@ namespace Factory {
 
             Core.dll,
             Download.dll,
+            GitRepository.dll,
             Script.dll,
             Nuget.dll,
             Sdk.dll,
