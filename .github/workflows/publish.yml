@@ -2,20 +2,15 @@ name: Publish to NuGet
 
 on:
   push:
-    tags:
-      - 'v*'
-  workflow_dispatch:
-    inputs:
-      version:
-        description: 'Version to publish (without v prefix, e.g. 0.2.0)'
-        required: true
+    branches:
+      - runtime
+  workflow_dispatch: {}
 
 jobs:
   publish:
     runs-on: ubuntu-latest
-    environment: release
     permissions:
-      id-token: write     # Required for OIDC token (NuGet trusted publishing)
+      id-token: write
       contents: read
       packages: read
 
@@ -27,14 +22,12 @@ jobs:
         with:
           dotnet-version: '9.x'
 
-      - name: Extract version
+      - name: Compute version
         id: version
         run: |
-          if [ -n "${{ inputs.version }}" ]; then
-            echo "VERSION=${{ inputs.version }}" >> $GITHUB_OUTPUT
-          else
-            echo "VERSION=${GITHUB_REF_NAME#v}" >> $GITHUB_OUTPUT
-          fi
+          SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
+          echo "VERSION=0.2.0-ci.${{ github.run_number }}.${SHORT_SHA}" >> $GITHUB_OUTPUT
+          echo "Building version: 0.2.0-ci.${{ github.run_number }}.${SHORT_SHA}"
 
       - name: Install bxl
         run: |
@@ -73,4 +66,8 @@ jobs:
           user: ${{ secrets.NUGET_USER }}
 
       - name: Push to NuGet
-        run: dotnet nuget push ./artifacts/*.nupkg --api-key ${{ steps.login.outputs.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json --skip-duplicate
+        run: |
+          dotnet nuget push ./artifacts/*.nupkg \
+            --api-key ${{ steps.login.outputs.NUGET_API_KEY }} \
+            --source https://api.nuget.org/v3/index.json \
+            --skip-duplicate
