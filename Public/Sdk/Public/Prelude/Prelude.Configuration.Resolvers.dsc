@@ -1145,4 +1145,4 @@ interface MsBuildResolverDefaults {
 
 }
 
-type Resolver = DScriptResolver | NuGetResolver | DownloadResolver | MsBuildResolver | NinjaResolver | RushResolver | YarnResolver | LageResolver | CustomJavaScriptResolver | NxResolver;
+type Resolver = DScriptResolver | NuGetResolver | DownloadResolver | MsBuildResolver | NinjaResolver | RushResolver | YarnResolver | LageResolver | CustomJavaScriptResolver | NxResolver | GitRepositoryResolver;
