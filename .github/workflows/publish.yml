@@ -22,6 +22,12 @@ jobs:
         with:
           dotnet-version: '9.x'
 
+      - name: Restore BuildXL cache
+        uses: actions/cache@v4
+        with:
+          path: /tmp/bxl-cache
+          key: bxl-cache
+
       - name: Compute version
         id: version
         run: |
@@ -42,6 +48,7 @@ jobs:
       - name: Build packages
         run: |
           bxl /c:config.dsc /server- \
+            /cacheDirectory:/tmp/bxl-cache \
             /q:ReleaseLinux \
             "/p:[Sdk.BuildXL]buildEBPFSandbox=0" \
             /EnableLinuxEBPFSandbox- \
