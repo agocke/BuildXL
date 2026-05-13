@@ -8,16 +8,16 @@ using System.Diagnostics.ContractsLight;
 namespace BuildXL.Utilities.Configuration.Mutable
 {
     /// <nodoc />
-    public sealed class GitRepoResolverSettings : ResolverSettings, IGitRepoResolverSettings
+    public class GitRepositoryResolverSettings : ResolverSettings, IGitRepoResolverSettings
     {
         /// <nodoc />
-        public GitRepoResolverSettings()
+        public GitRepositoryResolverSettings()
         {
             Repositories = new List<IGitRepoSettings>();
         }
 
         /// <nodoc />
-        public GitRepoResolverSettings(IGitRepoResolverSettings template, PathRemapper pathRemapper)
+        public GitRepositoryResolverSettings(IGitRepoResolverSettings template, PathRemapper pathRemapper)
             : base(template, pathRemapper)
         {
             Contract.Assume(template != null);
@@ -36,5 +36,20 @@ namespace BuildXL.Utilities.Configuration.Mutable
 
         /// <inheritdoc />
         IReadOnlyList<IGitRepoSettings> IGitRepoResolverSettings.Repositories => Repositories;
+    }
+
+    /// <nodoc />
+    public sealed class GitRepoResolverSettings : GitRepositoryResolverSettings
+    {
+        /// <nodoc />
+        public GitRepoResolverSettings()
+        {
+        }
+
+        /// <nodoc />
+        public GitRepoResolverSettings(IGitRepoResolverSettings template, PathRemapper pathRemapper)
+            : base(template, pathRemapper)
+        {
+        }
     }
 }

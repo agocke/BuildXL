@@ -266,22 +266,52 @@ namespace BuildXL.FrontEnd.GitRepository
 
         private IResolverSettings CreateEmbeddedResolverSettings()
         {
-            // Create a DScript resolver settings pointing at all extracted repository roots
-            var roots = m_repositories.Values.Select(data => data.ExtractedRoot).ToList();
+            var modules = new List<DiscriminatingUnion<AbsolutePath, IInlineModuleDefinition>>();
 
-            // We create a settings object that points the embedded source resolver at the extracted roots.
-            // Each root should contain module.config.bm or module.config.dsc files.
+            foreach (var data in m_repositories.Values)
+            {
+                var extractedRoot = data.ExtractedRoot.ToString(m_context.PathTable);
+                var moduleConfigs = Directory.EnumerateFiles(extractedRoot, "*config*", SearchOption.AllDirectories)
+                    .Where(candidate => IsModuleConfigurationFile(Path.GetFileName(candidate)));
+
+                var foundModule = false;
+                foreach (var moduleConfig in moduleConfigs)
+                {
+                    if (AbsolutePath.TryCreate(m_context.PathTable, moduleConfig, out var result))
+                    {
+                        modules.Add(new DiscriminatingUnion<AbsolutePath, IInlineModuleDefinition>(result));
+                        foundModule = true;
+                    }
+                }
+
+                if (!foundModule)
+                {
+                    Logger.Log.GitRepoFrontendNoModulesFound(
+                        m_context.LoggingContext,
+                        data.Settings.ModuleName,
+                        data.Settings.Owner,
+                        data.Settings.Repository);
+                }
+            }
+
+            // We create a settings object that points the embedded source resolver at all discovered
+            // module configuration files inside the extracted repositories.
             var settings = new BuildXL.Utilities.Configuration.Mutable.DScriptResolverSettings
             {
-                Name = Name + ".Embedded",
+                Name = Name,
                 Kind = KnownResolverKind.DScriptResolverKind,
                 Location = m_resolverSettings.Location,
-                Modules = roots
-                    .Select(root => new DiscriminatingUnion<AbsolutePath, IInlineModuleDefinition>(root))
-                    .ToList(),
+                Modules = modules,
             };
 
             return settings;
+        }
+
+        private static bool IsModuleConfigurationFile(string fileName)
+        {
+            return fileName.Equals("package.config.dsc", StringComparison.OrdinalIgnoreCase)
+                || fileName.Equals("module.config.dsc", StringComparison.OrdinalIgnoreCase)
+                || fileName.Equals("module.config.bm", StringComparison.OrdinalIgnoreCase);
         }
 
         /// <inheritdoc />

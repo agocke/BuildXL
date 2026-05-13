@@ -1,7 +1,6 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
-using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Diagnostics.ContractsLight;
@@ -86,15 +85,18 @@ namespace BuildXL.FrontEnd.GitRepository
         /// <inheritdoc />
         public async Task<bool?> TryConvertModuleToEvaluationAsync(IModuleRegistry moduleRegistry, ParsedModule module, IWorkspace workspace)
         {
-            if (!string.Equals(module.Descriptor.ResolverName, Name, StringComparison.Ordinal))
+            var maybeModuleDefinition = await m_workspaceResolver.TryGetModuleDefinitionAsync(module.Descriptor);
+            if (!maybeModuleDefinition.Succeeded)
             {
                 return null;
             }
 
+            var moduleDefinition = maybeModuleDefinition.Result;
+
             // Each spec in a Git repository module is a regular DScript file, so run regular AST conversion
             foreach (var sourceKv in module.Specs)
             {
-                var package = CreatePackage(module.Definition);
+                var package = CreatePackage(moduleDefinition);
                 var result = await FrontEndUtilities.RunAstConversionAsync(m_frontEndHost, m_context, m_logger, m_frontEndStatistics, package, sourceKv.Key);
 
                 if (!result.Success)
@@ -133,15 +135,16 @@ namespace BuildXL.FrontEnd.GitRepository
         }
 
         /// <inheritdoc />
-        public Task<bool?> TryEvaluateModuleAsync([NotNull] IEvaluationScheduler scheduler, [NotNull] ModuleDefinition module, QualifierId qualifierId)
+        public async Task<bool?> TryEvaluateModuleAsync([NotNull] IEvaluationScheduler scheduler, [NotNull] ModuleDefinition module, QualifierId qualifierId)
         {
-            if (!string.Equals(module.Descriptor.ResolverName, Name, StringComparison.Ordinal))
+            var maybeModuleDefinition = await m_workspaceResolver.TryGetModuleDefinitionAsync(module.Descriptor);
+            if (!maybeModuleDefinition.Succeeded)
             {
-                return Task.FromResult<bool?>(null);
+                return null;
             }
 
             // Evaluation is handled by the standard DScript evaluation pipeline since we did AST conversion above
-            return Task.FromResult<bool?>(true);
+            return true;
         }
     }
 }
