@@ -11,7 +11,6 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      packages: read
     steps:
       - uses: actions/checkout@v4
 
@@ -29,13 +28,10 @@ jobs:
 
       - name: Install bxl
         run: |
-          printf '<?xml version="1.0" encoding="utf-8"?>\n<configuration>\n  <packageSources>\n    <add key="nuget.org" value="https://api.nuget.org/v3/index.json" />\n    <add key="github" value="https://nuget.pkg.github.com/agocke/index.json" />\n  </packageSources>\n  <packageSourceCredentials>\n    <github>\n      <add key="Username" value="agocke" />\n      <add key="ClearTextPassword" value="%s" />\n    </github>\n  </packageSourceCredentials>\n</configuration>\n' "$GITHUB_TOKEN" > /tmp/nuget.config
-          dotnet tool install -g Microsoft.BuildXL.Tool \
-            --version "0.1.0-devBuild" \
-            --configfile /tmp/nuget.config
+          dotnet tool install -g agtest.bxl.tool \
+            --version "0.2.0-ci.2.4c5faf0"
         env:
           DOTNET_NUGET_SIGNATURE_VERIFICATION: false
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build packages
         run: |
