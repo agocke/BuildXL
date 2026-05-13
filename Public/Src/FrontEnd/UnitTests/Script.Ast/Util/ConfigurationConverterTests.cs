@@ -331,6 +331,25 @@ namespace Test.DScript.Util
             }
         }
 
+        [Fact]
+        public void TestGitRepositoryResolverUsesExpectedMutableSettingsType()
+        {
+            var resolver = ConfigurationConverter.Convert<IResolverSettings>(
+                m_context,
+                CreateObject(
+                    "kind", "GitRepository",
+                    "repositories", CreateArray(
+                        CreateObject(
+                            "moduleName", "bxl_rules_repo",
+                            "owner", "agocke",
+                            "repository", "bxl_rules",
+                            "commit", new string('a', 40)))));
+
+            var gitRepositoryResolver = Assert.IsType<GitRepositoryResolverSettings>(resolver);
+            XAssert.AreEqual(1, gitRepositoryResolver.Repositories.Count);
+            XAssert.AreEqual("bxl_rules_repo", gitRepositoryResolver.Repositories[0].ModuleName);
+        }
+
         /// <summary>
         /// Configuration object with only one List&lt;? extends IValue&gt; field set to an array of strings.
         /// </summary>
