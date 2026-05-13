@@ -12,7 +12,6 @@ jobs:
     permissions:
       id-token: write
       contents: read
-      packages: read
 
     steps:
       - uses: actions/checkout@v4
@@ -33,18 +32,16 @@ jobs:
         id: version
         run: |
           SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
-          echo "VERSION=0.2.0-ci.${{ github.run_number }}.${SHORT_SHA}" >> $GITHUB_OUTPUT
+          echo "SEMVER=0.2.0" >> $GITHUB_OUTPUT
+          echo "PRERELEASE=ci.${{ github.run_number }}.${SHORT_SHA}" >> $GITHUB_OUTPUT
           echo "Building version: 0.2.0-ci.${{ github.run_number }}.${SHORT_SHA}"
 
       - name: Install bxl
         run: |
-          printf '<?xml version="1.0" encoding="utf-8"?>\n<configuration>\n  <packageSources>\n    <add key="nuget.org" value="https://api.nuget.org/v3/index.json" />\n    <add key="github" value="https://nuget.pkg.github.com/agocke/index.json" />\n  </packageSources>\n  <packageSourceCredentials>\n    <github>\n      <add key="Username" value="agocke" />\n      <add key="ClearTextPassword" value="%s" />\n    </github>\n  </packageSourceCredentials>\n</configuration>\n' "$GITHUB_TOKEN" > /tmp/nuget.config
-          dotnet tool install -g Microsoft.BuildXL.Tool \
-            --version "0.1.0-devBuild" \
-            --configfile /tmp/nuget.config
+          dotnet tool install -g agtest.bxl.tool \
+            --version "0.2.0-ci.2.4c5faf0-devBuild"
         env:
           DOTNET_NUGET_SIGNATURE_VERIFICATION: false
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build packages
         run: |
@@ -56,8 +53,8 @@ jobs:
             "/p:[Sdk.BuildXL]experimentalDeployment=1" \
             "/p:MAJOR_KERNEL_VERSION=$(uname -r | cut -d'.' -f1)" \
             "/p:MINOR_KERNEL_VERSION=$(uname -r | cut -d'.' -f2)" \
-            "/p:[BuildXL.Branding]SemanticVersion=${{ steps.version.outputs.VERSION }}" \
-            "/p:[BuildXL.Branding]PrereleaseTag=" \
+            "/p:[BuildXL.Branding]SemanticVersion=${{ steps.version.outputs.SEMVER }}" \
+            "/p:[BuildXL.Branding]PrereleaseTag=${{ steps.version.outputs.PRERELEASE }}" \
             "/f:spec='*DotnetToolPackages*'"
 
       - name: Collect packages
