@@ -25,7 +25,7 @@ jobs:
       - name: Restore BuildXL cache
         uses: actions/cache@v4
         with:
-          path: ~/.bxl-cache
+          path: ~/.cache/bxl
           key: bxl-cache-${{ github.sha }}
           restore-keys: bxl-cache-
 
@@ -49,7 +49,7 @@ jobs:
       - name: Build packages
         run: |
           bxl /c:config.dsc /server- \
-            /cacheDirectory:$HOME/.bxl-cache \
+            /cacheDirectory:$HOME/.cache/bxl \
             /q:ReleaseLinux \
             "/p:[Sdk.BuildXL]buildEBPFSandbox=0" \
             /EnableLinuxEBPFSandbox- \
