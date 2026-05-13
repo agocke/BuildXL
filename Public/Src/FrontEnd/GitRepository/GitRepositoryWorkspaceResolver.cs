@@ -201,7 +201,7 @@ namespace BuildXL.FrontEnd.GitRepository
             }
             catch (Exception ex)
             {
-                Logger.Log.GitRepoFrontendExtractionFailed(m_context.LoggingContext, data.Settings.ModuleName, ex.Message);
+                Logger.Log.GitRepoFrontendExtractionFailed(m_context.LoggingContext, data.Settings.ModuleName, ex.ToString());
                 return false;
             }
 
