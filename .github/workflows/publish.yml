@@ -32,7 +32,8 @@ jobs:
         id: version
         run: |
           SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
-          echo "VERSION=0.2.0-ci.${{ github.run_number }}.${SHORT_SHA}" >> $GITHUB_OUTPUT
+          echo "SEMVER=0.2.0" >> $GITHUB_OUTPUT
+          echo "PRERELEASE=ci.${{ github.run_number }}.${SHORT_SHA}" >> $GITHUB_OUTPUT
           echo "Building version: 0.2.0-ci.${{ github.run_number }}.${SHORT_SHA}"
 
       - name: Install bxl
@@ -52,8 +53,8 @@ jobs:
             "/p:[Sdk.BuildXL]experimentalDeployment=1" \
             "/p:MAJOR_KERNEL_VERSION=$(uname -r | cut -d'.' -f1)" \
             "/p:MINOR_KERNEL_VERSION=$(uname -r | cut -d'.' -f2)" \
-            "/p:[BuildXL.Branding]SemanticVersion=${{ steps.version.outputs.VERSION }}" \
-            "/p:[BuildXL.Branding]PrereleaseTag=" \
+            "/p:[BuildXL.Branding]SemanticVersion=${{ steps.version.outputs.SEMVER }}" \
+            "/p:[BuildXL.Branding]PrereleaseTag=${{ steps.version.outputs.PRERELEASE }}" \
             "/f:spec='*DotnetToolPackages*'"
 
       - name: Collect packages
