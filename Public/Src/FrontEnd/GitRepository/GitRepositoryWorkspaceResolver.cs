@@ -5,7 +5,9 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Diagnostics.ContractsLight;
+using System.Formats.Tar;
 using System.IO;
+using System.IO.Compression;
 using System.Linq;
 using System.Threading.Tasks;
 using BuildXL.Cache.ContentStore.Hashing;
@@ -15,12 +17,11 @@ using BuildXL.FrontEnd.Script;
 using BuildXL.FrontEnd.Sdk;
 using BuildXL.FrontEnd.Workspaces;
 using BuildXL.FrontEnd.Workspaces.Core;
+using BuildXL.Native.IO;
 using BuildXL.Utilities;
 using BuildXL.Utilities.Core;
 using BuildXL.Utilities.Configuration;
-using ICSharpCode.SharpZipLib.GZip;
 using TypeScript.Net.DScript;
-using ICSharpCode.SharpZipLib.Tar;
 using TypeScript.Net.Types;
 
 namespace BuildXL.FrontEnd.GitRepository
@@ -216,12 +217,12 @@ namespace BuildXL.FrontEnd.GitRepository
         private static void ExtractTarGz(string archivePath, string targetDirectory, bool stripTopLevelDirectory)
         {
             using var fileStream = File.OpenRead(archivePath);
-            using var gzipStream = new GZipInputStream(fileStream);
-            using var tarArchive = new TarInputStream(gzipStream, null);
+            using var gzipStream = new GZipStream(fileStream, CompressionMode.Decompress);
+            using var reader = new TarReader(gzipStream);
 
             string topLevelPrefix = null;
 
-            while (tarArchive.GetNextEntry() is TarEntry entry)
+            while (reader.GetNextEntry() is TarEntry entry)
             {
                 var entryName = entry.Name;
 
@@ -251,15 +252,28 @@ namespace BuildXL.FrontEnd.GitRepository
 
                 var targetPath = Path.Combine(targetDirectory, entryName.Replace('/', Path.DirectorySeparatorChar));
 
-                if (entry.IsDirectory)
+                switch (entry.EntryType)
                 {
-                    Directory.CreateDirectory(targetPath);
-                }
-                else
-                {
-                    Directory.CreateDirectory(Path.GetDirectoryName(targetPath));
-                    using var outputStream = File.Create(targetPath);
-                    tarArchive.CopyEntryContents(outputStream);
+                    case TarEntryType.Directory:
+                        Directory.CreateDirectory(targetPath);
+                        break;
+
+                    case TarEntryType.SymbolicLink:
+                        Directory.CreateDirectory(Path.GetDirectoryName(targetPath));
+                        FileUtilities.TryCreateSymbolicLink(targetPath, entry.LinkName, isTargetFile: true);
+                        break;
+
+                    case TarEntryType.RegularFile:
+                    case TarEntryType.V7RegularFile:
+                        Directory.CreateDirectory(Path.GetDirectoryName(targetPath));
+                        using (var outputStream = File.Create(targetPath))
+                        {
+                            entry.DataStream?.CopyTo(outputStream);
+                        }
+                        break;
+
+                    default:
+                        break;
                 }
             }
         }

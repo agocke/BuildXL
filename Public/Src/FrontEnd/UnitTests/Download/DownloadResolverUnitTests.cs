@@ -7,6 +7,7 @@ using BuildXL.Cache.ContentStore.Hashing;
 using BuildXL.FrontEnd.Sdk;
 using BuildXL.Utilities.Configuration;
 using Test.BuildXL.FrontEnd.Core;
+using Test.BuildXL.TestUtilities.Xunit;
 using Xunit;
 
 [assembly: CollectionBehavior(MaxParallelThreads = 1)]
@@ -105,6 +106,42 @@ namespace Test.BuildXL.FrontEnd.Download
             Assert.Equal("Hello Universe", File.ReadAllText(universeFile));
 
             Assert.Equal(3, Directory.EnumerateFileSystemEntries(extractFolder).Count());
+        }
+
+        [FactIfSupported(requiresSymlinkPermission: true)]
+        public void TestTgzExtractionWithSymlinks()
+        {
+            var data = GetSampleData(TestServer + "file.tgz", DownloadArchiveType.Tgz);
+
+            var configuration = Build(new[] { data }).PersistSpecsAndGetConfiguration();
+            var result = RunEngineWithServer(configuration);
+
+            Assert.True(result.IsSuccess);
+
+            // retrieve the single extract pip based on tags
+            var extractPip = result.EngineState.RetrieveProcesses()
+                .Where(process => process.Tags.Contains(global::BuildXL.Utilities.Core.StringId.Create(FrontEndContext.StringTable, "extract"))).Single();
+            var extractFolder = extractPip.DirectoryOutputs.Single().Path.ToString(FrontEndContext.PathTable);
+
+            // Verify regular file was extracted
+            var worldFile = Path.Combine(extractFolder, "world");
+            Assert.True(File.Exists(worldFile));
+            Assert.Equal("Hello World", File.ReadAllText(worldFile));
+
+            // Verify file in subdirectory was extracted
+            var universeFile = Path.Combine(extractFolder, "multi", "universe");
+            Assert.True(File.Exists(universeFile));
+            Assert.Equal("Hello Universe", File.ReadAllText(universeFile));
+
+            // Verify symlink was created and points to the right target
+            var symlinkPath = Path.Combine(extractFolder, "galaxy-link");
+            var symlinkInfo = new FileInfo(symlinkPath);
+            Assert.True(symlinkInfo.Exists, "Symlink file should exist");
+            Assert.True(symlinkInfo.LinkTarget != null, "galaxy-link should be a symbolic link");
+            Assert.Equal("world", symlinkInfo.LinkTarget);
+
+            // Verify symlink content matches the target
+            Assert.Equal("Hello World", File.ReadAllText(symlinkPath));
         }
 
         [Fact]

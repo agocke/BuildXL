@@ -44,7 +44,6 @@ namespace FileDownloader {
             importFrom("BuildXL.Utilities").dll,
             importFrom("BuildXL.Utilities").Utilities.Core.dll,
             importFrom("BuildXL.Cache.ContentStore").Hashing.dll,
-            importFrom("SharpZipLib").pkg,
         ],
     });
 

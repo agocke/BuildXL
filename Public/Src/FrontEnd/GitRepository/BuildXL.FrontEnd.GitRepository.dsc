@@ -23,7 +23,6 @@ namespace GitRepository {
             importFrom("BuildXL.Utilities").Native.dll,
             importFrom("BuildXL.Utilities").Storage.dll,
             importFrom("BuildXL.Utilities").Utilities.Core.dll,
-            importFrom("SharpZipLib").pkg,
             ...BuildXLSdk.tplPackages,
         ],
         internalsVisibleTo: [

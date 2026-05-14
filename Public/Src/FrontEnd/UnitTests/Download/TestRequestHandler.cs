@@ -2,7 +2,9 @@
 // Licensed under the MIT License.
 
 using System;
+using System.Formats.Tar;
 using System.IO;
+using System.IO.Compression;
 using System.Net;
 using System.Threading.Tasks;
 using ICSharpCode.SharpZipLib.Core;
@@ -52,6 +54,38 @@ namespace Test.BuildXL.FrontEnd.Download
                                 outputMemStream.Position = 0;
                                 response.ContentLength64 = outputMemStream.Length;
                                 StreamUtils.Copy(outputMemStream, response.OutputStream, new byte[4096]);
+                                break;
+                            case ".tgz":
+                                var tgzMemStream = new MemoryStream();
+                                using (var gzipStream = new GZipStream(tgzMemStream, CompressionMode.Compress, leaveOpen: true))
+                                {
+                                    using var tarWriter = new TarWriter(gzipStream);
+
+                                    // Add a regular file
+                                    var worldEntry = new PaxTarEntry(TarEntryType.RegularFile, "world")
+                                    {
+                                        DataStream = new MemoryStream(worldBuffer)
+                                    };
+                                    tarWriter.WriteEntry(worldEntry);
+
+                                    // Add another regular file in a subdirectory
+                                    var universeEntry = new PaxTarEntry(TarEntryType.RegularFile, "multi/universe")
+                                    {
+                                        DataStream = new MemoryStream(universeBuffer)
+                                    };
+                                    tarWriter.WriteEntry(universeEntry);
+
+                                    // Add a symlink: "galaxy-link" -> "world"
+                                    var symlinkEntry = new PaxTarEntry(TarEntryType.SymbolicLink, "galaxy-link")
+                                    {
+                                        LinkName = "world"
+                                    };
+                                    tarWriter.WriteEntry(symlinkEntry);
+                                }
+
+                                tgzMemStream.Position = 0;
+                                response.ContentLength64 = tgzMemStream.Length;
+                                tgzMemStream.CopyTo(response.OutputStream);
                                 break;
                             case ".404":
                                 response.StatusCode = 404;
