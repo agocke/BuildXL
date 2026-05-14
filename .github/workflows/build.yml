@@ -43,7 +43,7 @@ jobs:
             "/p:EnableLinuxEBPFSandboxForTests=0" \
             "/p:MAJOR_KERNEL_VERSION=$(uname -r | cut -d'.' -f1)" \
             "/p:MINOR_KERNEL_VERSION=$(uname -r | cut -d'.' -f2)" \
-            "/f:~(spec='*ebpf*')~(spec='*Test.BuildXL.Processes*')"
+            "/f:~(spec='*ebpf*')and~(spec='*Test.BuildXL.Processes*')"
 
       - name: Build packages
         run: |
