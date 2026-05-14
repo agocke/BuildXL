@@ -3,14 +3,13 @@
 
 using System;
 using System.Diagnostics.ContractsLight;
+using System.Formats.Tar;
 using System.IO;
+using System.IO.Compression;
 using BuildXL.Native.IO;
 using BuildXL.ToolSupport;
 using BuildXL.Utilities.Core;
 using BuildXL.Utilities.Configuration;
-using ICSharpCode.SharpZipLib.Core;
-using ICSharpCode.SharpZipLib.GZip;
-using ICSharpCode.SharpZipLib.Tar;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -88,15 +87,14 @@ namespace Tool.Download
                     {
                         var targetFile = Path.Combine(target, Path.GetFileNameWithoutExtension(arguments.PathToFileToExtract));
 
-                        using (var reader = new StreamReader(arguments.PathToFileToExtract))
-                        using (var gzipStream = new GZipInputStream(reader.BaseStream))
+                        using (var fileStream = File.OpenRead(arguments.PathToFileToExtract))
+                        using (var gzipStream = new GZipStream(fileStream, CompressionMode.Decompress))
                         using (var output = FileUtilities.CreateFileStream(targetFile, FileMode.Create, FileAccess.Write, FileShare.Read))
                         {
-                            byte[] buffer = new byte[4096];
-                            StreamUtils.Copy(gzipStream, output, buffer);
+                            gzipStream.CopyTo(output);
                         }
                     }
-                    catch (GZipException e)
+                    catch (InvalidDataException e)
                     {
                         ErrorExtractingArchive(archive, target, e.Message);
                         return false;
@@ -106,13 +104,12 @@ namespace Tool.Download
                 case DownloadArchiveType.Tar:
                     try
                     {
-                        using (var reader = new StreamReader(arguments.PathToFileToExtract))
-                        using (var tar = TarArchive.CreateInputTarArchive(reader.BaseStream, nameEncoding: null))
+                        using (var fileStream = File.OpenRead(arguments.PathToFileToExtract))
                         {
-                            tar.ExtractContents(target);
+                            ExtractTar(fileStream, target);
                         }
                     }
-                    catch (TarException e)
+                    catch (InvalidDataException e)
                     {
                         ErrorExtractingArchive(archive, target, e.Message);
                         return false;
@@ -122,19 +119,13 @@ namespace Tool.Download
                 case DownloadArchiveType.Tgz:
                     try
                     {
-                        using (var reader = new StreamReader(arguments.PathToFileToExtract))
-                        using (var gzipStream = new GZipInputStream(reader.BaseStream))
-                        using (var tar = TarArchive.CreateInputTarArchive(gzipStream, nameEncoding: null))
+                        using (var fileStream = File.OpenRead(arguments.PathToFileToExtract))
+                        using (var gzipStream = new GZipStream(fileStream, CompressionMode.Decompress))
                         {
-                            tar.ExtractContents(target);
+                            ExtractTar(gzipStream, target);
                         }
                     }
-                    catch (GZipException e)
-                    {
-                        ErrorExtractingArchive(archive, target, e.Message);
-                        return false;
-                    }
-                    catch (TarException e)
+                    catch (InvalidDataException e)
                     {
                         ErrorExtractingArchive(archive, target, e.Message);
                         return false;
@@ -165,6 +156,56 @@ namespace Tool.Download
             }
 
             return true;
+        }
+
+        /// <summary>
+        /// Extracts a tar stream to the target directory, handling regular files, directories, and symbolic links.
+        /// </summary>
+        private static void ExtractTar(Stream tarStream, string targetDirectory)
+        {
+            using var reader = new TarReader(tarStream);
+
+            while (reader.GetNextEntry() is TarEntry entry)
+            {
+                // Sanitize: prevent path traversal attacks
+                var entryName = entry.Name;
+                if (entryName.Contains(".."))
+                {
+                    continue;
+                }
+
+                var targetPath = Path.Combine(targetDirectory, entryName.Replace('/', Path.DirectorySeparatorChar));
+
+                switch (entry.EntryType)
+                {
+                    case TarEntryType.Directory:
+                        Directory.CreateDirectory(targetPath);
+                        break;
+
+                    case TarEntryType.SymbolicLink:
+                        Directory.CreateDirectory(Path.GetDirectoryName(targetPath));
+                        // entry.LinkName contains the relative or absolute symlink target
+                        var symlinkResult = FileUtilities.TryCreateSymbolicLink(targetPath, entry.LinkName, isTargetFile: true);
+                        if (!symlinkResult.Succeeded)
+                        {
+                            throw new IOException($"Failed to create symlink '{targetPath}' -> '{entry.LinkName}': {symlinkResult.Failure.Describe()}");
+                        }
+                        break;
+
+                    case TarEntryType.RegularFile:
+                    case TarEntryType.V7RegularFile:
+                        Directory.CreateDirectory(Path.GetDirectoryName(targetPath));
+                        using (var outputStream = File.Create(targetPath))
+                        {
+                            entry.DataStream?.CopyTo(outputStream);
+                        }
+                        break;
+
+                    // Skip other entry types (hard links, device nodes, etc.)
+                    default:
+                        break;
+                }
+            }
         }
 
         private void ErrorExtractingArchive(string archive, string target, string message)
