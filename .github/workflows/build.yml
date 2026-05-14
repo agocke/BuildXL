@@ -2,9 +2,9 @@ name: Build
 
 on:
   push:
-    branches: [ runtime ]
+    branches: [ main, runtime ]
   pull_request:
-    branches: [ runtime ]
+    branches: [ main, runtime ]
 
 jobs:
   build-linux:
@@ -33,13 +33,12 @@ jobs:
         env:
           DOTNET_NUGET_SIGNATURE_VERIFICATION: false
 
-      - name: Build packages
+      - name: Build and test
         run: |
           bxl /c:config.dsc /server- \
             /cacheDirectory:$HOME/.cache/bxl \
-            /q:ReleaseLinux \
             "/p:[Sdk.BuildXL]buildEBPFSandbox=0" \
             /EnableLinuxEBPFSandbox- \
+            "/p:EnableLinuxEBPFSandboxForTests=0" \
             "/p:MAJOR_KERNEL_VERSION=$(uname -r | cut -d'.' -f1)" \
-            "/p:MINOR_KERNEL_VERSION=$(uname -r | cut -d'.' -f2)" \
-            "/f:output='*public/pkgs/*'"
+            "/p:MINOR_KERNEL_VERSION=$(uname -r | cut -d'.' -f2)"
