@@ -671,6 +671,19 @@ namespace Test.DScript.Util
                     }, default(LineInfo), AbsolutePath.Invalid);
         }
 
+        private ObjectLiteral CreateObject(string name1, object value1, string name2, object value2, string name3, object value3, string name4, object value4)
+        {
+            return
+                ObjectLiteral.Create(
+                    new List<Binding>
+                    {
+                        new Binding(CreateString(name1), value1, location: default(LineInfo)),
+                        new Binding(CreateString(name2), value2, location: default(LineInfo)),
+                        new Binding(CreateString(name3), value3, location: default(LineInfo)),
+                        new Binding(CreateString(name4), value4, location: default(LineInfo))
+                    }, default(LineInfo), AbsolutePath.Invalid);
+        }
+
         private ArrayLiteral CreateArray(params object[] elements)
         {
             return ArrayLiteral.CreateWithoutCopy(elements.Select(e => EvaluationResult.Create(e)).ToArray(), default(LineInfo), AbsolutePath.Invalid);

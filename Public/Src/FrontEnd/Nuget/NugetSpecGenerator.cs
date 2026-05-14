@@ -35,7 +35,7 @@ namespace BuildXL.FrontEnd.Nuget
         private readonly IEsrpSignConfiguration m_esrpSignConfiguration;
 
         /// <summary>Current spec generation format version</summary>
-        public const int SpecGenerationFormatVersion = 25;
+        public const int SpecGenerationFormatVersion = 26;
 
         private readonly NugetRelativePathComparer m_nugetRelativePathComparer;
 
@@ -89,9 +89,9 @@ namespace BuildXL.FrontEnd.Nuget
             // 1. Optional import of managed sdk.
             if (analyzedPackage.IsManagedPackage)
             {
-                // import * as Managed from 'Sdk.Managed';
+                // import * as Managed from 'Sdk.Managed.Shared';
                 sourceFileBuilder
-                    .Statement(ImportDeclaration(alias: "Managed", moduleName: "Sdk.Managed"))
+                    .Statement(ImportDeclaration(alias: "Managed", moduleName: "Sdk.Managed.Shared"))
                     .SemicolonAndBlankLine();
             }
 
