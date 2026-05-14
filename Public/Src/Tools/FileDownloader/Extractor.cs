@@ -185,7 +185,11 @@ namespace Tool.Download
                     case TarEntryType.SymbolicLink:
                         Directory.CreateDirectory(Path.GetDirectoryName(targetPath));
                         // entry.LinkName contains the relative or absolute symlink target
-                        FileUtilities.TryCreateSymbolicLink(targetPath, entry.LinkName, isTargetFile: true);
+                        var symlinkResult = FileUtilities.TryCreateSymbolicLink(targetPath, entry.LinkName, isTargetFile: true);
+                        if (!symlinkResult.Succeeded)
+                        {
+                            throw new IOException($"Failed to create symlink '{targetPath}' -> '{entry.LinkName}': {symlinkResult.Failure.Describe()}");
+                        }
                         break;
 
                     case TarEntryType.RegularFile:

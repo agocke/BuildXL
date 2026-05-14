@@ -235,6 +235,12 @@ function setBxlCmdArgs {
             /enableEvaluationThrottling
             # setting up core dump creation failed
             /noWarn:460
+            # Allow interactive prompts (e.g. for sudo when setting sandbox capabilities)
+            /interactive+
+            # Disable sandboxing by default for developer builds on Linux
+            /unsafe_DisableDetours+
+            # Disable eBPF sandbox
+            /EnableLinuxEBPFSandbox-
         )
     fi
 

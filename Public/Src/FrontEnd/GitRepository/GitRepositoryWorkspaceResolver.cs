@@ -260,7 +260,11 @@ namespace BuildXL.FrontEnd.GitRepository
 
                     case TarEntryType.SymbolicLink:
                         Directory.CreateDirectory(Path.GetDirectoryName(targetPath));
-                        FileUtilities.TryCreateSymbolicLink(targetPath, entry.LinkName, isTargetFile: true);
+                        var symlinkResult = FileUtilities.TryCreateSymbolicLink(targetPath, entry.LinkName, isTargetFile: true);
+                        if (!symlinkResult.Succeeded)
+                        {
+                            throw new IOException($"Failed to create symlink '{targetPath}' -> '{entry.LinkName}': {symlinkResult.Failure.Describe()}");
+                        }
                         break;
 
                     case TarEntryType.RegularFile:
