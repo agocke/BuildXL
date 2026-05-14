@@ -25,6 +25,7 @@ jobs:
           path: ~/.cache/bxl
           key: bxl-cache-${{ github.sha }}
           restore-keys: bxl-cache-
+          save-always: true
 
       - name: Install bxl
         run: |
