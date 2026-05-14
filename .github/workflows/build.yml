@@ -41,7 +41,8 @@ jobs:
             /EnableLinuxEBPFSandbox- \
             "/p:EnableLinuxEBPFSandboxForTests=0" \
             "/p:MAJOR_KERNEL_VERSION=$(uname -r | cut -d'.' -f1)" \
-            "/p:MINOR_KERNEL_VERSION=$(uname -r | cut -d'.' -f2)"
+            "/p:MINOR_KERNEL_VERSION=$(uname -r | cut -d'.' -f2)" \
+            "/f:~(spec='*ebpf*')"
 
       - name: Build packages
         run: |
