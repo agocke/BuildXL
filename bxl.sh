@@ -241,6 +241,8 @@ function setBxlCmdArgs {
             /unsafe_DisableDetours+
             # Disable eBPF sandbox
             /EnableLinuxEBPFSandbox-
+            # Disable building the eBPF sandbox (requires libelf, libnuma, etc.)
+            "/p:[Sdk.BuildXL]buildEBPFSandbox=0"
         )
     fi
 

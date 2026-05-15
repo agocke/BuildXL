@@ -81,6 +81,19 @@ namespace Test.BuildXL.FrontEnd.Download
                                         LinkName = "world"
                                     };
                                     tarWriter.WriteEntry(symlinkEntry);
+
+                                    // Add hard links that reference already-extracted files
+                                    var hardLink1 = new PaxTarEntry(TarEntryType.HardLink, "shared/world-copy")
+                                    {
+                                        LinkName = "world"
+                                    };
+                                    tarWriter.WriteEntry(hardLink1);
+
+                                    var hardLink2 = new PaxTarEntry(TarEntryType.HardLink, "host/universe-copy")
+                                    {
+                                        LinkName = "multi/universe"
+                                    };
+                                    tarWriter.WriteEntry(hardLink2);
                                 }
 
                                 tgzMemStream.Position = 0;

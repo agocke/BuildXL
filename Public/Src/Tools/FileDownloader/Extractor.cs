@@ -159,11 +159,14 @@ namespace Tool.Download
         }
 
         /// <summary>
-        /// Extracts a tar stream to the target directory, handling regular files, directories, and symbolic links.
+        /// Extracts a tar stream to the target directory, handling regular files, directories, symbolic links, and hard links.
         /// </summary>
         private static void ExtractTar(Stream tarStream, string targetDirectory)
         {
             using var reader = new TarReader(tarStream);
+
+            // Hard links whose targets haven't been extracted yet are deferred to a second pass.
+            var deferredHardLinks = new List<(string targetPath, string resolvedLinkTarget)>();
 
             while (reader.GetNextEntry() is TarEntry entry)
             {
@@ -184,11 +187,44 @@ namespace Tool.Download
 
                     case TarEntryType.SymbolicLink:
                         Directory.CreateDirectory(Path.GetDirectoryName(targetPath));
-                        // entry.LinkName contains the relative or absolute symlink target
-                        var symlinkResult = FileUtilities.TryCreateSymbolicLink(targetPath, entry.LinkName, isTargetFile: true);
+
+                        // Determine whether the symlink target is a file or directory.
+                        // Resolve the target relative to the symlink's parent directory.
+                        bool isTargetFile = true;
+                        var symlinkDir = Path.GetDirectoryName(targetPath);
+                        var resolvedSymlinkTarget = Path.GetFullPath(Path.Combine(symlinkDir, entry.LinkName));
+                        if (Directory.Exists(resolvedSymlinkTarget))
+                        {
+                            isTargetFile = false;
+                        }
+
+                        var symlinkResult = FileUtilities.TryCreateSymbolicLink(targetPath, entry.LinkName, isTargetFile);
                         if (!symlinkResult.Succeeded)
                         {
                             throw new IOException($"Failed to create symlink '{targetPath}' -> '{entry.LinkName}': {symlinkResult.Failure.Describe()}");
+                        }
+                        break;
+
+                    case TarEntryType.HardLink:
+                        // Hard links reference another entry in the archive by path.
+                        // The link target path is relative to the archive root.
+                        var linkName = entry.LinkName;
+                        if (linkName.Contains(".."))
+                        {
+                            break;
+                        }
+
+                        var resolvedLinkTarget = Path.Combine(targetDirectory, linkName.Replace('/', Path.DirectorySeparatorChar));
+                        Directory.CreateDirectory(Path.GetDirectoryName(targetPath));
+
+                        if (File.Exists(resolvedLinkTarget))
+                        {
+                            File.Copy(resolvedLinkTarget, targetPath, overwrite: true);
+                        }
+                        else
+                        {
+                            // Target not yet extracted; defer to a second pass.
+                            deferredHardLinks.Add((targetPath, resolvedLinkTarget));
                         }
                         break;
 
@@ -201,9 +237,22 @@ namespace Tool.Download
                         }
                         break;
 
-                    // Skip other entry types (hard links, device nodes, etc.)
+                    // Skip other entry types (device nodes, etc.)
                     default:
                         break;
+                }
+            }
+
+            // Process deferred hard links whose targets were extracted after the link entry.
+            foreach (var (path, linkTarget) in deferredHardLinks)
+            {
+                if (File.Exists(linkTarget))
+                {
+                    File.Copy(linkTarget, path, overwrite: true);
+                }
+                else
+                {
+                    throw new IOException($"Hard link target '{linkTarget}' not found after full archive extraction for '{path}'.");
                 }
             }
         }

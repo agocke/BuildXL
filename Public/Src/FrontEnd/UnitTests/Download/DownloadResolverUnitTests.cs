@@ -144,6 +144,32 @@ namespace Test.BuildXL.FrontEnd.Download
             Assert.Equal("Hello World", File.ReadAllText(symlinkPath));
         }
 
+        [FactIfSupported(requiresSymlinkPermission: true)]
+        public void TestTgzExtractionWithHardLinks()
+        {
+            var data = GetSampleData(TestServer + "file.tgz", DownloadArchiveType.Tgz);
+
+            var configuration = Build(new[] { data }).PersistSpecsAndGetConfiguration();
+            var result = RunEngineWithServer(configuration);
+
+            Assert.True(result.IsSuccess);
+
+            // retrieve the single extract pip based on tags
+            var extractPip = result.EngineState.RetrieveProcesses()
+                .Where(process => process.Tags.Contains(global::BuildXL.Utilities.Core.StringId.Create(FrontEndContext.StringTable, "extract"))).Single();
+            var extractFolder = extractPip.DirectoryOutputs.Single().Path.ToString(FrontEndContext.PathTable);
+
+            // Verify hard link to "world" was extracted as a copy in shared/
+            var hardLink1 = Path.Combine(extractFolder, "shared", "world-copy");
+            Assert.True(File.Exists(hardLink1), "Hard link shared/world-copy should exist");
+            Assert.Equal("Hello World", File.ReadAllText(hardLink1));
+
+            // Verify hard link to "multi/universe" was extracted as a copy in host/
+            var hardLink2 = Path.Combine(extractFolder, "host", "universe-copy");
+            Assert.True(File.Exists(hardLink2), "Hard link host/universe-copy should exist");
+            Assert.Equal("Hello Universe", File.ReadAllText(hardLink2));
+        }
+
         [Fact]
         public void FileExtractionWithWrongHashShouldFail()
         {
