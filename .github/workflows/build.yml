@@ -43,7 +43,7 @@ jobs:
             "/p:EnableLinuxEBPFSandboxForTests=0" \
             "/p:MAJOR_KERNEL_VERSION=$(uname -r | cut -d'.' -f1)" \
             "/p:MINOR_KERNEL_VERSION=$(uname -r | cut -d'.' -f2)" \
-            "/f:spec='*Test.BuildXL.FrontEnd.Nuget*'"
+            "/f:spec='*FrontEnd/UnitTests/*'"
 
       - name: Build packages
         run: |
