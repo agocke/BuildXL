@@ -25,6 +25,7 @@ jobs:
           path: ~/.cache/bxl
           key: bxl-cache-${{ github.sha }}
           restore-keys: bxl-cache-
+          save-always: true
 
       - name: Install bxl
         run: |
@@ -32,6 +33,17 @@ jobs:
             --version "0.2.0-ci.2.4c5faf0-devBuild"
         env:
           DOTNET_NUGET_SIGNATURE_VERIFICATION: false
+
+      - name: Build and test
+        run: |
+          bxl /c:config.dsc /server- \
+            /cacheDirectory:$HOME/.cache/bxl \
+            "/p:[Sdk.BuildXL]buildEBPFSandbox=0" \
+            /EnableLinuxEBPFSandbox- \
+            "/p:EnableLinuxEBPFSandboxForTests=0" \
+            "/p:MAJOR_KERNEL_VERSION=$(uname -r | cut -d'.' -f1)" \
+            "/p:MINOR_KERNEL_VERSION=$(uname -r | cut -d'.' -f2)" \
+            "/f:spec='*FrontEnd/UnitTests/*'"
 
       - name: Build packages
         run: |

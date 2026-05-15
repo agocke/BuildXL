@@ -36,6 +36,14 @@ function createSdkDeploymentDefinition(serverDeployment: boolean, minimalDeploym
                         contents: glob(d`${sdkRoot}/Transformers`, "*.dsc")
                     },
                     {
+                        subfolder: "Sdk.Managed.Shared",
+                        contents: glob(d`${sdkRoot}/Managed/Shared`, "*.dsc")
+                    },
+                    {
+                        subfolder: "Sdk.Deployment",
+                        contents: glob(d`${sdkRoot}/Deployment`, "*.dsc")
+                    },
+                    {
                         subfolder: "Sdk.Managed.Tools.BinarySigner",
                         contents: glob(d`${sdkRoot}/Managed/Tools/BinarySigner`, "*.dsc")
                     },

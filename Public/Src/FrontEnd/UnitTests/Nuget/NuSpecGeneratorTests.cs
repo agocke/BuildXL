@@ -16,7 +16,7 @@ namespace Test.BuildXL.FrontEnd.Nuget
 {
     public class NuSpecGeneratorTests
     {
-        private const int CurrentSpecGenVersion = 25;
+        private const int CurrentSpecGenVersion = 26;
 
         private readonly ITestOutputHelper m_output;
         private readonly FrontEndContext m_context;
@@ -85,7 +85,7 @@ namespace Test.BuildXL.FrontEnd.Nuget
             m_output.WriteLine(text);
 
             string expectedSpec = $@"import * as NugetDownloader from ""BuildXL.Tools.NugetDownloader"";
-import * as Managed from ""Sdk.Managed"";
+import * as Managed from ""Sdk.Managed.Shared"";
 
 export declare const qualifier: {{
     targetFramework: ""net45"" | ""net451"" | ""net452"" | ""net46"" | ""net461"" | ""net462"" | ""net472"" | ""netstandard2.0"" | ""netcoreapp2.0"" | ""netcoreapp2.1"" | ""netcoreapp2.2"" | ""netstandard2.1"" | ""netcoreapp3.0"" | ""netcoreapp3.1"" | ""net5.0"" | ""net6.0"" | ""net7.0"" | ""net8.0"" | ""net9.0"" | ""net10.0"",
@@ -179,7 +179,7 @@ export const pkg: Managed.ManagedNugetPackage = (() => {{
 )();";
             XAssert.AreEqual(expectedSpec.Trim(), text.Trim());
 
-            const string CurrentSpecHash = "5D3E2737EC789DD9968A2EEAEC6D96E54FE4A157";
+            const string CurrentSpecHash = "6C272351042262EA4CA75168831779F77CC42801";
             ValidateCurrentSpecGenVersion(expectedSpec, CurrentSpecHash);
         }
 
@@ -251,7 +251,7 @@ export const pkg: NugetPackage = {{
             m_output.WriteLine(text);
 
             string expectedSpec = $@"import * as NugetDownloader from ""BuildXL.Tools.NugetDownloader"";
-import * as Managed from ""Sdk.Managed"";
+import * as Managed from ""Sdk.Managed.Shared"";
 
 export declare const qualifier: {{targetFramework: ""net6.0"" | ""net7.0"" | ""net8.0"" | ""net9.0"" | ""net10.0"", targetRuntime: ""win-x64"" | ""osx-x64"" | ""linux-x64""}};
 
@@ -313,7 +313,7 @@ export const pkg: Managed.ManagedNugetPackage = (() => {{
 )();";
             XAssert.AreEqual(expectedSpec.Trim(), text.Trim());
 
-            const string CurrentSpecHash = "3BBC9B4C75D772C8ECBB29599B145C3193DFF0C5";
+            const string CurrentSpecHash = "297826DDE8B5ACEA1019EAF117FC1F24790DC069";
             ValidateCurrentSpecGenVersion(expectedSpec, CurrentSpecHash);
         }
 
