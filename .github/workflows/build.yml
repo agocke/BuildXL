@@ -89,10 +89,10 @@ jobs:
           Write-Host "Detected MSVC version: $version"
           "MSVC_VERSION=$version" | Out-File -FilePath $env:GITHUB_ENV -Append
 
-      - name: Build packages
+      - name: Build win-x64 packages
         shell: cmd
         run: |
           call bxl.cmd /server- ^
             /cacheDirectory:%USERPROFILE%\.cache\bxl ^
             /q:Release ^
-            "/f:output='*public/pkgs/*'"
+            "/f:spec='*DotnetToolPackages*'"
