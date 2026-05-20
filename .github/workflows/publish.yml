@@ -57,6 +57,7 @@ jobs:
           bxl /c:config.dsc /server- `
             /cacheDirectory:$env:USERPROFILE\.cache\bxl `
             /unsafe_DisableDetours+ `
+            /verifyJournalForEngineVolumes- `
             /q:Release `
             "/p:[Sdk.BuildXL]experimentalDeployment=1" `
             "/p:[BuildXL.Branding]SemanticVersion=${{ steps.version.outputs.SEMVER }}" `
