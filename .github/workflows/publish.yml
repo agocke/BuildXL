@@ -111,7 +111,7 @@ jobs:
       - name: Install bxl
         run: |
           dotnet tool install -g agtest.bxl.tool \
-            --version "0.2.0-ci.2.4c5faf0-devBuild"
+            --version "0.2.0-ci.9.9e337b3"
         env:
           DOTNET_NUGET_SIGNATURE_VERIFICATION: false
 
