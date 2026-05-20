@@ -76,6 +76,14 @@ jobs:
           restore-keys: bxl-cache-win-
           save-always: true
 
+      - name: Install bxl
+        shell: bash
+        run: |
+          dotnet tool install -g agtest.bxl.tool \
+            --version "0.2.0-ci.9.9e337b3"
+        env:
+          DOTNET_NUGET_SIGNATURE_VERIFICATION: false
+
       - name: Enable USN journal
         shell: cmd
         run: fsutil usn createjournal m=0x20000000 a=0x8000000 %CD:~0,2%
@@ -90,9 +98,9 @@ jobs:
           "MSVC_VERSION=$version" | Out-File -FilePath $env:GITHUB_ENV -Append
 
       - name: Build win-x64 packages
-        shell: cmd
+        shell: bash
         run: |
-          call bxl.cmd /server- ^
-            /cacheDirectory:%USERPROFILE%\.cache\bxl ^
-            /q:Release ^
+          bxl /c:config.dsc /server- \
+            /cacheDirectory:$HOME/.cache/bxl \
+            /q:Release \
             "/f:spec='*DotnetToolPackages*'"
