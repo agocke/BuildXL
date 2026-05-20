@@ -7,8 +7,75 @@ on:
   workflow_dispatch: {}
 
 jobs:
+  build-windows-packages:
+    runs-on: windows-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.x'
+
+      - name: Restore BuildXL cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/bxl
+          key: bxl-cache-win-${{ github.sha }}
+          restore-keys: bxl-cache-win-
+
+      - name: Compute version
+        id: version
+        shell: bash
+        run: |
+          SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
+          echo "SEMVER=0.2.0" >> $GITHUB_OUTPUT
+          echo "PRERELEASE=ci.${{ github.run_number }}.${SHORT_SHA}" >> $GITHUB_OUTPUT
+
+      - name: Enable USN journal
+        shell: cmd
+        run: fsutil usn createjournal m=0x20000000 a=0x8000000 %CD:~0,2%
+
+      - name: Detect MSVC version
+        shell: pwsh
+        run: |
+          $msvcRoot = "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Tools\MSVC"
+          if (-not (Test-Path $msvcRoot)) { throw "MSVC not found at $msvcRoot" }
+          $version = (Get-ChildItem $msvcRoot -Directory | Sort-Object Name -Descending | Select-Object -First 1).Name
+          Write-Host "Detected MSVC version: $version"
+          "MSVC_VERSION=$version" | Out-File -FilePath $env:GITHUB_ENV -Append
+
+      - name: Build win-x64 packages
+        shell: cmd
+        run: |
+          call bxl.cmd /server- ^
+            /cacheDirectory:%USERPROFILE%\.cache\bxl ^
+            /q:Release ^
+            "/p:[Sdk.BuildXL]experimentalDeployment=1" ^
+            "/p:[BuildXL.Branding]SemanticVersion=${{ steps.version.outputs.SEMVER }}" ^
+            "/p:[BuildXL.Branding]PrereleaseTag=${{ steps.version.outputs.PRERELEASE }}" ^
+            "/f:spec='*DotnetToolPackages*'"
+
+      - name: Collect win-x64 packages
+        shell: bash
+        run: |
+          mkdir -p ./artifacts
+          find Out -name "agtest.bxl*win-x64*.nupkg" -exec cp {} ./artifacts/ \;
+          echo "Windows packages to publish:"
+          ls -la ./artifacts/
+
+      - name: Upload win-x64 packages
+        uses: actions/upload-artifact@v4
+        with:
+          name: win-x64-packages
+          path: ./artifacts/*.nupkg
+          if-no-files-found: error
+
   publish:
     runs-on: ubuntu-latest
+    needs: build-windows-packages
     permissions:
       id-token: write
       contents: read
@@ -61,6 +128,15 @@ jobs:
         run: |
           mkdir -p ./artifacts
           find Out -name "agtest.bxl*.nupkg" -exec cp {} ./artifacts/ \;
+
+      - name: Download win-x64 packages
+        uses: actions/download-artifact@v4
+        with:
+          name: win-x64-packages
+          path: ./artifacts
+
+      - name: List packages to publish
+        run: |
           echo "Packages to publish:"
           ls -la ./artifacts/
 

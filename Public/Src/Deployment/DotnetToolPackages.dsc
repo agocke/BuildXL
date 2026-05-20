@@ -12,6 +12,10 @@ namespace DotnetToolPackages {
 
     const defaultTargetFramework = Managed.TargetFrameworks.DefaultTargetFramework;
 
+    // win-x64 native binaries (DetoursServices, etc.) require MSVC, so the win-x64
+    // RID package can only be built on Windows. The pointer (meta) package always
+    // references win-x64 so the published win-x64 nupkg (built on a separate Windows
+    // CI runner) is wired up correctly.
     const canBuildAllPackagesOnThisHost = Context.getCurrentHost().os === "win";
 
     const packageNamePrefix =
@@ -111,9 +115,7 @@ namespace DotnetToolPackages {
         targetFramework: defaultTargetFramework,
         commands: [toolCommand],
         ridPackages: [
-            ...addIfLazy(canBuildAllPackagesOnThisHost, () => [
-                { rid: "win-x64", id: `${toolPackageId}.win-x64` },
-            ]),
+            { rid: "win-x64", id: `${toolPackageId}.win-x64` },
             { rid: "osx-x64", id: `${toolPackageId}.osx-x64` },
             { rid: "linux-x64", id: `${toolPackageId}.linux-x64` },
         ],

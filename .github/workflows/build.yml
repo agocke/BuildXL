@@ -55,3 +55,44 @@ jobs:
             "/p:MAJOR_KERNEL_VERSION=$(uname -r | cut -d'.' -f1)" \
             "/p:MINOR_KERNEL_VERSION=$(uname -r | cut -d'.' -f2)" \
             "/f:output='*public/pkgs/*'"
+
+  build-windows:
+    runs-on: windows-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.x'
+
+      - name: Restore BuildXL cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/bxl
+          key: bxl-cache-win-${{ github.sha }}
+          restore-keys: bxl-cache-win-
+          save-always: true
+
+      - name: Enable USN journal
+        shell: cmd
+        run: fsutil usn createjournal m=0x20000000 a=0x8000000 %CD:~0,2%
+
+      - name: Detect MSVC version
+        shell: pwsh
+        run: |
+          $msvcRoot = "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Tools\MSVC"
+          if (-not (Test-Path $msvcRoot)) { throw "MSVC not found at $msvcRoot" }
+          $version = (Get-ChildItem $msvcRoot -Directory | Sort-Object Name -Descending | Select-Object -First 1).Name
+          Write-Host "Detected MSVC version: $version"
+          "MSVC_VERSION=$version" | Out-File -FilePath $env:GITHUB_ENV -Append
+
+      - name: Build win-x64 packages
+        shell: cmd
+        run: |
+          call bxl.cmd /server- ^
+            /cacheDirectory:%USERPROFILE%\.cache\bxl ^
+            /q:Release ^
+            "/f:spec='*DotnetToolPackages*'"
