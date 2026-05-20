@@ -55,3 +55,75 @@ jobs:
             "/p:MAJOR_KERNEL_VERSION=$(uname -r | cut -d'.' -f1)" \
             "/p:MINOR_KERNEL_VERSION=$(uname -r | cut -d'.' -f2)" \
             "/f:output='*public/pkgs/*'"
+
+  build-windows:
+    runs-on: windows-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.x'
+
+      - name: Restore BuildXL cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/bxl
+          key: bxl-cache-win-${{ github.sha }}
+          restore-keys: bxl-cache-win-
+          save-always: true
+
+      - name: Install bxl
+        shell: bash
+        run: |
+          dotnet tool install -g agtest.bxl.tool \
+            --version "0.2.0-ci.2.4c5faf0-devBuild"
+        env:
+          DOTNET_NUGET_SIGNATURE_VERIFICATION: false
+
+      - name: Build packages
+        shell: bash
+        run: |
+          bxl /c:config.dsc /server- \
+            /cacheDirectory:$HOME/.cache/bxl \
+            /q:Release \
+            "/f:output='*public/pkgs/*'"
+
+  build-windows:
+    runs-on: windows-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.x'
+
+      - name: Restore BuildXL cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/bxl
+          key: bxl-cache-win-${{ github.sha }}
+          restore-keys: bxl-cache-win-
+          save-always: true
+
+      - name: Install bxl
+        shell: bash
+        run: |
+          dotnet tool install -g agtest.bxl.tool \
+            --version "0.2.0-ci.2.4c5faf0-devBuild"
+        env:
+          DOTNET_NUGET_SIGNATURE_VERIFICATION: false
+
+      - name: Build packages
+        shell: bash
+        run: |
+          bxl /c:config.dsc /server- \
+            /cacheDirectory:$HOME/.cache/bxl \
+            /q:Release \
+            "/f:output='*public/pkgs/*'"
