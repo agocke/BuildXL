@@ -81,6 +81,7 @@ jobs:
         run: fsutil usn createjournal m=0x20000000 a=0x8000000 %CD:~0,2%
 
       - name: Build packages
+        shell: cmd
         run: |
           call bxl.cmd /server- ^
             /cacheDirectory:%USERPROFILE%\.cache\bxl ^
