@@ -77,9 +77,9 @@ jobs:
           save-always: true
 
       - name: Install bxl
-        shell: bash
+        shell: pwsh
         run: |
-          dotnet tool install -g agtest.bxl.tool \
+          dotnet tool install -g agtest.bxl.tool `
             --version "0.2.0-ci.9.9e337b3"
         env:
           DOTNET_NUGET_SIGNATURE_VERIFICATION: false
@@ -94,12 +94,10 @@ jobs:
           "MSVC_VERSION=$version" | Out-File -FilePath $env:GITHUB_ENV -Append
 
       - name: Build win-x64 packages
-        shell: bash
-        env:
-          MSYS_NO_PATHCONV: "1"
+        shell: pwsh
         run: |
-          bxl /c:config.dsc /server- \
-            /cacheDirectory:$HOME/.cache/bxl \
-            /unsafe_DisableDetours+ \
-            /q:Release \
+          bxl /c:config.dsc /server- `
+            /cacheDirectory:$env:USERPROFILE\.cache\bxl `
+            /unsafe_DisableDetours+ `
+            /q:Release `
             "/f:spec='*DotnetToolPackages*'"

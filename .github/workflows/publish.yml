@@ -28,16 +28,16 @@ jobs:
 
       - name: Compute version
         id: version
-        shell: bash
+        shell: pwsh
         run: |
-          SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
-          echo "SEMVER=0.2.0" >> $GITHUB_OUTPUT
-          echo "PRERELEASE=ci.${{ github.run_number }}.${SHORT_SHA}" >> $GITHUB_OUTPUT
+          $shortSha = "${{ github.sha }}".Substring(0, 7)
+          "SEMVER=0.2.0" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          "PRERELEASE=ci.${{ github.run_number }}.$shortSha" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
 
       - name: Install bxl
-        shell: bash
+        shell: pwsh
         run: |
-          dotnet tool install -g agtest.bxl.tool \
+          dotnet tool install -g agtest.bxl.tool `
             --version "0.2.0-ci.9.9e337b3"
         env:
           DOTNET_NUGET_SIGNATURE_VERIFICATION: false
@@ -52,17 +52,15 @@ jobs:
           "MSVC_VERSION=$version" | Out-File -FilePath $env:GITHUB_ENV -Append
 
       - name: Build win-x64 packages
-        shell: bash
-        env:
-          MSYS_NO_PATHCONV: "1"
+        shell: pwsh
         run: |
-          bxl /c:config.dsc /server- \
-            /cacheDirectory:$HOME/.cache/bxl \
-            /unsafe_DisableDetours+ \
-            /q:Release \
-            "/p:[Sdk.BuildXL]experimentalDeployment=1" \
-            "/p:[BuildXL.Branding]SemanticVersion=${{ steps.version.outputs.SEMVER }}" \
-            "/p:[BuildXL.Branding]PrereleaseTag=${{ steps.version.outputs.PRERELEASE }}" \
+          bxl /c:config.dsc /server- `
+            /cacheDirectory:$env:USERPROFILE\.cache\bxl `
+            /unsafe_DisableDetours+ `
+            /q:Release `
+            "/p:[Sdk.BuildXL]experimentalDeployment=1" `
+            "/p:[BuildXL.Branding]SemanticVersion=${{ steps.version.outputs.SEMVER }}" `
+            "/p:[BuildXL.Branding]PrereleaseTag=${{ steps.version.outputs.PRERELEASE }}" `
             "/f:spec='*DotnetToolPackages*'"
 
       - name: Collect win-x64 packages
