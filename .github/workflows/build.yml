@@ -19,13 +19,13 @@ jobs:
         with:
           dotnet-version: '9.x'
 
-      - name: Restore BuildXL cache
-        id: bxl-cache
-        uses: actions/cache/restore@v4
+      - name: BuildXL cache
+        uses: actions/cache@v4
         with:
           path: ~/.cache/bxl
           key: bxl-cache-v3-${{ github.sha }}
           restore-keys: bxl-cache-v3-
+          save-always: true
 
       - name: Install bxl
         run: |
@@ -56,13 +56,6 @@ jobs:
             "/p:MINOR_KERNEL_VERSION=$(uname -r | cut -d'.' -f2)" \
             "/f:output='*public/pkgs/*'"
 
-      - name: Save BuildXL cache
-        if: success() && steps.bxl-cache.outputs.cache-hit != 'true'
-        uses: actions/cache/save@v4
-        with:
-          path: ~/.cache/bxl
-          key: bxl-cache-v3-${{ github.sha }}
-
   build-windows:
     runs-on: windows-latest
     permissions:
@@ -75,13 +68,13 @@ jobs:
         with:
           dotnet-version: '9.x'
 
-      - name: Restore BuildXL cache
-        id: bxl-cache
-        uses: actions/cache/restore@v4
+      - name: BuildXL cache
+        uses: actions/cache@v4
         with:
           path: ~/.cache/bxl
           key: bxl-cache-win-v3-${{ github.sha }}
           restore-keys: bxl-cache-win-v3-
+          save-always: true
 
       - name: Install bxl
         shell: pwsh
@@ -109,10 +102,3 @@ jobs:
             /verifyJournalForEngineVolumes- `
             /q:Release `
             "/f:spec='*DotnetToolPackages*'"
-
-      - name: Save BuildXL cache
-        if: success() && steps.bxl-cache.outputs.cache-hit != 'true'
-        uses: actions/cache/save@v4
-        with:
-          path: ~/.cache/bxl
-          key: bxl-cache-win-v3-${{ github.sha }}
