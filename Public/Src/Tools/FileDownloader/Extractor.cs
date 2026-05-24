@@ -161,23 +161,40 @@ namespace Tool.Download
         /// <summary>
         /// Extracts a tar stream to the target directory, handling regular files, directories, symbolic links, and hard links.
         /// </summary>
+        /// <remarks>
+        /// Throws on path-traversal entries (entries that would write outside <paramref name="targetDirectory"/>),
+        /// on symlink creation failures, and on unresolvable hard links. Device nodes, FIFOs and other
+        /// non-portable entry types are skipped with a diagnostic.
+        /// </remarks>
         private static void ExtractTar(Stream tarStream, string targetDirectory)
         {
             using var reader = new TarReader(tarStream);
+
+            var fullTargetDirectory = Path.GetFullPath(targetDirectory);
+            var targetWithSeparator = fullTargetDirectory.EndsWith(Path.DirectorySeparatorChar.ToString(), StringComparison.Ordinal)
+                ? fullTargetDirectory
+                : fullTargetDirectory + Path.DirectorySeparatorChar;
 
             // Hard links whose targets haven't been extracted yet are deferred to a second pass.
             var deferredHardLinks = new List<(string targetPath, string resolvedLinkTarget)>();
 
             while (reader.GetNextEntry() is TarEntry entry)
             {
-                // Sanitize: prevent path traversal attacks
                 var entryName = entry.Name;
-                if (entryName.Contains(".."))
+                if (string.IsNullOrEmpty(entryName))
                 {
                     continue;
                 }
 
-                var targetPath = Path.Combine(targetDirectory, entryName.Replace('/', Path.DirectorySeparatorChar));
+                var targetPath = Path.GetFullPath(Path.Combine(targetDirectory, entryName.Replace('/', Path.DirectorySeparatorChar)));
+
+                // Sanitize: prevent path traversal. After normalization the target must lie
+                // strictly under targetDirectory. Done on the resolved path rather than a naive
+                // string check on the entry name so legitimate names like "foo..bar" are allowed.
+                if (!targetPath.StartsWith(targetWithSeparator, StringComparison.Ordinal) && targetPath != fullTargetDirectory)
+                {
+                    throw new IOException($"Refusing to extract tar entry '{entryName}': resolves outside target directory '{fullTargetDirectory}'.");
+                }
 
                 switch (entry.EntryType)
                 {
@@ -209,12 +226,12 @@ namespace Tool.Download
                         // Hard links reference another entry in the archive by path.
                         // The link target path is relative to the archive root.
                         var linkName = entry.LinkName;
-                        if (linkName.Contains(".."))
+                        var resolvedLinkTarget = Path.GetFullPath(Path.Combine(targetDirectory, linkName.Replace('/', Path.DirectorySeparatorChar)));
+                        if (!resolvedLinkTarget.StartsWith(targetWithSeparator, StringComparison.Ordinal) && resolvedLinkTarget != fullTargetDirectory)
                         {
-                            break;
+                            throw new IOException($"Refusing to materialise hard link '{entryName}' -> '{linkName}': link target resolves outside target directory '{fullTargetDirectory}'.");
                         }
 
-                        var resolvedLinkTarget = Path.Combine(targetDirectory, linkName.Replace('/', Path.DirectorySeparatorChar));
                         Directory.CreateDirectory(Path.GetDirectoryName(targetPath));
 
                         if (File.Exists(resolvedLinkTarget))
@@ -237,8 +254,12 @@ namespace Tool.Download
                         }
                         break;
 
-                    // Skip other entry types (device nodes, etc.)
                     default:
+                        // Device nodes, FIFOs, character/block devices, sparse files, etc. are not
+                        // portable across the platforms we support. Surface them so an archive that
+                        // unexpectedly relies on them isn't silently truncated (the bug class that
+                        // originally dropped npm/npx symlinks pre-d21a0268c).
+                        Console.Error.WriteLine($"Skipping unsupported tar entry type {entry.EntryType} for '{entryName}'.");
                         break;
                 }
             }
