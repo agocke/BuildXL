@@ -290,15 +290,73 @@ namespace BuildXL.FrontEnd.GitRepository
             {
                 var extractedRoot = data.ExtractedRoot.ToString(m_context.PathTable);
                 var moduleConfigs = Directory.EnumerateFiles(extractedRoot, "*config*", SearchOption.AllDirectories)
-                    .Where(candidate => IsModuleConfigurationFile(Path.GetFileName(candidate)));
+                    .Where(candidate => IsModuleConfigurationFile(Path.GetFileName(candidate)))
+                    .ToList();
+
+                // If the user requested a specific subset of modules, narrow down to those whose
+                // declared name matches the filter. This prevents stray .dsc files in test modules
+                // or internal tooling from being parsed (and potentially crashing) in the consumer.
+                var requestedModules = data.Settings.Modules;
+                var hasFilter = requestedModules != null && requestedModules.Count > 0;
+
+                HashSet<string> requestedSet = null;
+                HashSet<string> matchedSet = null;
+                Dictionary<string, string> discoveredNameToPath = null;
+
+                if (hasFilter)
+                {
+                    requestedSet = new HashSet<string>(requestedModules, StringComparer.Ordinal);
+                    matchedSet = new HashSet<string>(StringComparer.Ordinal);
+                    discoveredNameToPath = new Dictionary<string, string>(StringComparer.Ordinal);
+                }
 
                 var foundModule = false;
                 foreach (var moduleConfig in moduleConfigs)
                 {
+                    if (hasFilter)
+                    {
+                        if (!TryExtractModuleName(moduleConfig, out var declaredName))
+                        {
+                            Logger.Log.GitRepoFrontendFailedToParseModuleConfig(
+                                m_context.LoggingContext,
+                                data.Settings.ModuleName,
+                                moduleConfig);
+                            continue;
+                        }
+
+                        discoveredNameToPath[declaredName] = moduleConfig;
+
+                        if (!requestedSet.Contains(declaredName))
+                        {
+                            continue;
+                        }
+
+                        matchedSet.Add(declaredName);
+                    }
+
                     if (AbsolutePath.TryCreate(m_context.PathTable, moduleConfig, out var result))
                     {
                         modules.Add(new DiscriminatingUnion<AbsolutePath, IInlineModuleDefinition>(result));
                         foundModule = true;
+                    }
+                }
+
+                if (hasFilter)
+                {
+                    var missing = requestedSet.Where(name => !matchedSet.Contains(name)).ToList();
+                    if (missing.Count > 0)
+                    {
+                        var available = string.Join(", ", discoveredNameToPath.Keys.OrderBy(n => n, StringComparer.Ordinal));
+                        foreach (var name in missing)
+                        {
+                            Logger.Log.GitRepoFrontendRequestedModuleNotFound(
+                                m_context.LoggingContext,
+                                data.Settings.ModuleName,
+                                data.Settings.Owner,
+                                data.Settings.Repository,
+                                name,
+                                available);
+                        }
                     }
                 }
 
@@ -330,6 +388,41 @@ namespace BuildXL.FrontEnd.GitRepository
             return fileName.Equals("package.config.dsc", StringComparison.OrdinalIgnoreCase)
                 || fileName.Equals("module.config.dsc", StringComparison.OrdinalIgnoreCase)
                 || fileName.Equals("module.config.bm", StringComparison.OrdinalIgnoreCase);
+        }
+
+        // Matches:  name : "Foo.Bar"   or   name: 'Foo.Bar'
+        // The module config files are conventionally small and use this exact shape.
+        private static readonly System.Text.RegularExpressions.Regex s_moduleNameRegex =
+            new System.Text.RegularExpressions.Regex(
+                @"\bname\s*:\s*[""']([^""']+)[""']",
+                System.Text.RegularExpressions.RegexOptions.Compiled);
+
+        /// <summary>
+        /// Lightweight extraction of the declared module name from a <c>module.config.dsc</c> /
+        /// <c>module.config.bm</c> / <c>package.config.dsc</c> file. Returns false when no name
+        /// declaration can be located.
+        /// </summary>
+        private static bool TryExtractModuleName(string moduleConfigPath, out string moduleName)
+        {
+            moduleName = null;
+            try
+            {
+                string contents = File.ReadAllText(moduleConfigPath);
+                var match = s_moduleNameRegex.Match(contents);
+                if (match.Success)
+                {
+                    moduleName = match.Groups[1].Value;
+                    return true;
+                }
+            }
+            catch (IOException)
+            {
+            }
+            catch (System.UnauthorizedAccessException)
+            {
+            }
+
+            return false;
         }
 
         /// <inheritdoc />

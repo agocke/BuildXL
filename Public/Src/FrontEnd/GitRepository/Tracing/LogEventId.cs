@@ -26,5 +26,7 @@ namespace BuildXL.FrontEnd.GitRepository.Tracing
         GitRepoFrontendHashMismatch = 11909,
         ContextStatistics = 11910,
         BulkStatistic = 11911,
+        GitRepoFrontendRequestedModuleNotFound = 11912,
+        GitRepoFrontendFailedToParseModuleConfig = 11913,
     }
 }
