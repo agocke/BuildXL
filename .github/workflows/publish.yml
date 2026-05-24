@@ -19,6 +19,14 @@ jobs:
         with:
           dotnet-version: '9.x'
 
+      - name: BuildXL cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/bxl
+          key: bxl-cache-win-v4-${{ github.sha }}
+          restore-keys: bxl-cache-win-v4-
+          save-always: true
+
       - name: Compute version
         id: version
         shell: pwsh
@@ -31,7 +39,7 @@ jobs:
         shell: pwsh
         run: |
           dotnet tool install -g agtest.bxl.tool `
-            --version "0.2.0-ci.9.9e337b3"
+            --version "0.2.0-ci.12.e00e62f"
         env:
           DOTNET_NUGET_SIGNATURE_VERIFICATION: false
 
@@ -87,6 +95,14 @@ jobs:
         with:
           dotnet-version: '9.x'
 
+      - name: BuildXL cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/bxl
+          key: bxl-cache-v4-${{ github.sha }}
+          restore-keys: bxl-cache-v4-
+          save-always: true
+
       - name: Compute version
         id: version
         run: |
@@ -98,7 +114,7 @@ jobs:
       - name: Install bxl
         run: |
           dotnet tool install -g agtest.bxl.tool \
-            --version "0.2.0-ci.9.9e337b3"
+            --version "0.2.0-ci.12.e00e62f"
         env:
           DOTNET_NUGET_SIGNATURE_VERIFICATION: false
 
