@@ -68,14 +68,6 @@ jobs:
         with:
           dotnet-version: '9.x'
 
-      - name: BuildXL cache
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/bxl
-          key: bxl-cache-win-v3-${{ github.sha }}
-          restore-keys: bxl-cache-win-v3-
-          save-always: true
-
       - name: Install bxl
         shell: pwsh
         run: |
@@ -98,7 +90,6 @@ jobs:
         run: |
           bxl /c:config.dsc /server- `
             /cacheDirectory:$env:USERPROFILE\.cache\bxl `
-            /disableCacheLookup+ `
             /unsafe_DisableDetours+ `
             /verifyJournalForEngineVolumes- `
             /q:Release `
