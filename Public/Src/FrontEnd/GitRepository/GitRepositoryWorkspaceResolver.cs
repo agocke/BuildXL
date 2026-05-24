@@ -402,7 +402,7 @@ namespace BuildXL.FrontEnd.GitRepository
         /// <c>module.config.bm</c> / <c>package.config.dsc</c> file. Returns false when no name
         /// declaration can be located.
         /// </summary>
-        private static bool TryExtractModuleName(string moduleConfigPath, out string moduleName)
+        internal static bool TryExtractModuleName(string moduleConfigPath, out string moduleName)
         {
             moduleName = null;
             try
