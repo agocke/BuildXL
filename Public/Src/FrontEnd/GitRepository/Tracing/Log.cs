@@ -122,6 +122,24 @@ namespace BuildXL.FrontEnd.GitRepository.Tracing
         public abstract void GitRepoFrontendHashMismatch(LoggingContext context, string moduleName, string expectedHash, string actualHash);
 
         [GeneratedEvent(
+            (ushort)LogEventId.GitRepoFrontendRequestedModuleNotFound,
+            EventGenerators = EventGenerators.LocalOnly,
+            EventLevel = Level.Error,
+            Keywords = (ushort)(Keywords.UserMessage | Keywords.UserError),
+            EventTask = (ushort)Tasks.Parser,
+            Message = ResolverSettingsPrefix + "Module '{requestedModule}' requested by repository '{moduleName}' ({owner}/{repository}) was not found among the discovered module configuration files. Available modules: [{availableModules}].")]
+        public abstract void GitRepoFrontendRequestedModuleNotFound(LoggingContext context, string moduleName, string owner, string repository, string requestedModule, string availableModules);
+
+        [GeneratedEvent(
+            (ushort)LogEventId.GitRepoFrontendFailedToParseModuleConfig,
+            EventGenerators = EventGenerators.LocalOnly,
+            EventLevel = Level.Warning,
+            Keywords = (ushort)Keywords.UserMessage,
+            EventTask = (ushort)Tasks.Parser,
+            Message = "GitRepository resolver: Could not extract module name from '{moduleConfigPath}' while applying the 'modules' filter for repository '{moduleName}'. The file will be skipped.")]
+        public abstract void GitRepoFrontendFailedToParseModuleConfig(LoggingContext context, string moduleName, string moduleConfigPath);
+
+        [GeneratedEvent(
             (ushort)LogEventId.ContextStatistics,
             EventGenerators = EventGenerators.LocalOnly,
             EventLevel = Level.Verbose,

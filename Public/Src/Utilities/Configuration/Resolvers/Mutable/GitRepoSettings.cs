@@ -1,6 +1,9 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
+using System.Collections.Generic;
+using System.Linq;
+
 namespace BuildXL.Utilities.Configuration.Mutable
 {
     /// <nodoc />
@@ -19,6 +22,7 @@ namespace BuildXL.Utilities.Configuration.Mutable
             Repository = template.Repository;
             Commit = template.Commit;
             Hash = template.Hash;
+            Modules = template.Modules?.ToList();
         }
 
         /// <inheritdoc />
@@ -35,5 +39,8 @@ namespace BuildXL.Utilities.Configuration.Mutable
 
         /// <inheritdoc />
         public string Hash { get; set; }
+
+        /// <inheritdoc />
+        public IReadOnlyList<string> Modules { get; set; }
     }
 }

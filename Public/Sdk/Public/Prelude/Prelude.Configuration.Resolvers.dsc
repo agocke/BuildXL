@@ -189,6 +189,16 @@ interface GitRepoSettings {
      * When specified the download is validated against this hash.
      */
     hash?: string,
+
+    /**
+     * Optional list of module names to expose from the fetched repository. When specified, only
+     * modules whose `name` matches one of the entries in this list are surfaced; other
+     * `module.config.dsc`/`module.config.bm` files in the repository are ignored. This prevents
+     * stray `.dsc` files (e.g. test modules or internal tooling) with unresolvable imports from
+     * being parsed in the consumer's workspace. When omitted, all discovered module configs are
+     * exposed.
+     */
+    modules?: string[],
 }
 
 /** We represent a passthrough environment variable with the value unit */ 

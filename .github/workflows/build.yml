@@ -19,12 +19,12 @@ jobs:
         with:
           dotnet-version: '9.x'
 
-      - name: Restore BuildXL cache
+      - name: BuildXL cache
         uses: actions/cache@v4
         with:
           path: ~/.cache/bxl
-          key: bxl-cache-${{ github.sha }}
-          restore-keys: bxl-cache-
+          key: bxl-cache-v3-${{ github.sha }}
+          restore-keys: bxl-cache-v3-
           save-always: true
 
       - name: Install bxl
@@ -67,14 +67,6 @@ jobs:
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '9.x'
-
-      - name: Restore BuildXL cache
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/bxl
-          key: bxl-cache-win-${{ github.sha }}
-          restore-keys: bxl-cache-win-
-          save-always: true
 
       - name: Install bxl
         shell: pwsh

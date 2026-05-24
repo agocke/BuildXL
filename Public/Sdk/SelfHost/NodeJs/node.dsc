@@ -101,10 +101,14 @@ namespace Node {
             return Transformer.copyDirectory({sourceDir: pkgRoot, targetDir: outDir, dependencies: [pkgContents], recursive: true});
         }
 
-        // For linux/mac we need to create an executable npm symlink alongside node
-        // The npm file does come with the linux package in the form of a symlink, but our current
-        // targz expander doesn't handle it well
-
+        // For linux/mac we need an executable `bin/npm` entrypoint alongside `bin/node`.
+        // The linux/mac node package ships `bin/npm` as a symlink to
+        // `../lib/node_modules/npm/bin/npm-cli.js`. Depending on the targz expander
+        // used by the LKG bxl, that symlink may or may not be preserved through
+        // extraction + rsync. We always replace it with a small wrapper script so the
+        // behaviour is consistent across bootstraps and so that a shell-redirect never
+        // accidentally overwrites the symlink target (which would corrupt npm-cli.js
+        // for any consumer that invokes it directly, e.g. Lage).
         const npmExe = p`${outDir}/bin/npm`;
 
         const result = Transformer.execute({
@@ -119,7 +123,12 @@ namespace Node {
                 // Copy the contents to its final destination
                 Cmd.args([ "rsync", "-rlpgoDvhI", Cmd.join("", [Artifact.none(pkgRoot), '/']), Artifact.none(outDir)]),
                 Cmd.rawArgument(" && "),
-                // Create and npm node executable
+                // Remove any pre-existing bin/npm (regular file or symlink from the
+                // upstream package) so the subsequent redirect cannot follow a symlink
+                // and clobber lib/node_modules/npm/bin/npm-cli.js.
+                Cmd.args([ "rm", "-f", Artifact.none(npmExe) ]),
+                Cmd.rawArgument(" && "),
+                // Create the npm wrapper script
                 Cmd.args([ "echo", "'#!/usr/bin/env", "node'", ">", Artifact.none(npmExe) ]),
                 Cmd.rawArgument(" && "),
                 Cmd.args([ "echo", "\"require(\'../lib/node_modules/npm/lib/cli.js\')(process)\"", ">>", Artifact.none(npmExe) ]),
