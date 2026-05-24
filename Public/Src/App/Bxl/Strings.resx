@@ -132,6 +132,15 @@
   <data name="HelpText_DisplayHelp_FilteringInfo" xml:space="preserve">
     <value>You can choose to build only a subset of available pips by using filtering.</value>
   </data>
+  <data name="HelpText_DisplayHelp_Subcommands" xml:space="preserve">
+    <value>Selects pips emitted by the bxl_rules SDK (https://github.com/agocke/bxl_rules):
+  build [labels...]   Builds everything except run/test pips.
+  run   [labels...]   Builds and runs pips tagged 'bxl-kind:binary'.
+  test  [labels...]   Builds and runs pips tagged 'bxl-kind:test'.
+The subcommand must be the first positional argument. Any additional positional
+arguments are treated as labels and intersected with the kind filter, using the
+same expansion as bare implicit filters. May be combined with /filter:.</value>
+  </data>
   <data name="HelpText_DisplayHelp_Filter_Tag" xml:space="preserve">
     <value>Filters by a tag. Case sensitive.</value>
   </data>
