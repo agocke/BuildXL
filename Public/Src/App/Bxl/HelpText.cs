@@ -76,6 +76,10 @@ namespace BuildXL
             hw.WriteLine();
 
             hw.WriteOption(
+                "build|run|test [labels...]",
+                Strings.HelpText_DisplayHelp_Subcommands);
+
+            hw.WriteOption(
                 "/filter:<deps><filter>",
                 Strings.HelpText_DisplayHelp_Filter);
 

@@ -308,5 +308,125 @@ namespace Test.BuildXL
             XAssert.IsTrue(argsParser.TryParse((new [] { @"/c:" + m_specFilePath }).Concat(input).ToArray(), pt, out var config));
             return config.Cache.CacheSalt;
         }
+
+        private ICommandLineConfiguration ParseSubcommand(params string[] input)
+        {
+            PathTable pt = new PathTable();
+            var argsParser = new Args();
+            XAssert.IsTrue(argsParser.TryParse((new[] { @"/c:" + m_specFilePath }).Concat(input).ToArray(), pt, out var config));
+            return config;
+        }
+
+        [Fact]
+        public void NoSubcommandLeavesImplicitFilters()
+        {
+            // Without `build`/`run`/`test`, positional args become implicit filters and Filter
+            // stays null (the EngineSchedule does the expansion). Sanity-check that nothing
+            // accidentally swallows a non-subcommand positional arg.
+            var config = ParseSubcommand("foo", "bar");
+            XAssert.IsNull(config.Filter);
+            XAssert.AreEqual(2, config.Startup.ImplicitFilters.Count);
+            XAssert.AreEqual("foo", config.Startup.ImplicitFilters[0]);
+            XAssert.AreEqual("bar", config.Startup.ImplicitFilters[1]);
+        }
+
+        [Fact]
+        public void TestSubcommandWithNoLabels()
+        {
+            var config = ParseSubcommand("test");
+            XAssert.AreEqual("tag='bxl-kind:test'", config.Filter);
+            XAssert.AreEqual(0, config.Startup.ImplicitFilters.Count);
+        }
+
+        [Fact]
+        public void RunSubcommandWithNoLabels()
+        {
+            var config = ParseSubcommand("run");
+            XAssert.AreEqual("tag='bxl-kind:binary'", config.Filter);
+            XAssert.AreEqual(0, config.Startup.ImplicitFilters.Count);
+        }
+
+        [Fact]
+        public void BuildSubcommandWithNoLabels()
+        {
+            var config = ParseSubcommand("build");
+            XAssert.AreEqual("~(tag='bxl-kind:binary')and~(tag='bxl-kind:test')", config.Filter);
+            XAssert.AreEqual(0, config.Startup.ImplicitFilters.Count);
+        }
+
+        [Fact]
+        public void SubcommandIsCaseInsensitive()
+        {
+            XAssert.AreEqual("tag='bxl-kind:test'", ParseSubcommand("TEST").Filter);
+            XAssert.AreEqual("tag='bxl-kind:binary'", ParseSubcommand("Run").Filter);
+            XAssert.AreEqual("~(tag='bxl-kind:binary')and~(tag='bxl-kind:test')", ParseSubcommand("Build").Filter);
+        }
+
+        [Fact]
+        public void SubcommandOnlyAtFirstPosition()
+        {
+            // A `test` token in second position is NOT a subcommand; it's a label.
+            var config = ParseSubcommand("mylabel", "test");
+            XAssert.IsNull(config.Filter);
+            XAssert.AreEqual(2, config.Startup.ImplicitFilters.Count);
+        }
+
+        [Fact]
+        public void TestSubcommandWithLabels()
+        {
+            var config = ParseSubcommand("test", "MyTest");
+            XAssert.IsNotNull(config.Filter);
+            // Mirrors the EngineSchedule implicit-filter expansion.
+            string expected = "tag='bxl-kind:test' and (output='*" + System.IO.Path.DirectorySeparatorChar
+                + "MyTest' or spec='*" + System.IO.Path.DirectorySeparatorChar
+                + "MyTest' or tag='MyTest')";
+            XAssert.AreEqual(expected, config.Filter);
+            XAssert.AreEqual(0, config.Startup.ImplicitFilters.Count);
+        }
+
+        [Fact]
+        public void RunSubcommandWithWildcardLabel()
+        {
+            // Labels starting with `*` use the simpler expansion (no leading separator).
+            var config = ParseSubcommand("run", "*foo");
+            XAssert.AreEqual("tag='bxl-kind:binary' and (output='*foo' or spec='*foo')", config.Filter);
+        }
+
+        [Fact]
+        public void TestSubcommandWithMultipleLabels()
+        {
+            // Use labels that are not valid hex (so FilterParser.TryParsePipId rejects them)
+            // and we don't get an extra `or id='...'` term mixed in.
+            var config = ParseSubcommand("test", "MyA", "MyB");
+            var sep = System.IO.Path.DirectorySeparatorChar;
+            string expected =
+                "tag='bxl-kind:test' and (" +
+                $"output='*{sep}MyA' or spec='*{sep}MyA' or tag='MyA'" +
+                " or " +
+                $"output='*{sep}MyB' or spec='*{sep}MyB' or tag='MyB'" +
+                ")";
+            XAssert.AreEqual(expected, config.Filter);
+        }
+
+        [Fact]
+        public void TestSubcommandWithHexLabelAddsIdTerm()
+        {
+            // Hex-shaped labels also match the pip-id grammar, so the expansion
+            // adds an `id='...'` term — matches the behavior of bare implicit filters.
+            var config = ParseSubcommand("test", "A");
+            var sep = System.IO.Path.DirectorySeparatorChar;
+            string expected =
+                "tag='bxl-kind:test' and (" +
+                $"output='*{sep}A' or spec='*{sep}A' or tag='A' or id='A'" +
+                ")";
+            XAssert.AreEqual(expected, config.Filter);
+        }
+
+        [Fact]
+        public void SubcommandComposesWithExplicitFilter()
+        {
+            var config = ParseSubcommand("/filter:tag='custom'", "test");
+            XAssert.AreEqual("(tag='custom') and (tag='bxl-kind:test')", config.Filter);
+        }
     }
 }

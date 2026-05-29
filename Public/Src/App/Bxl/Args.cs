@@ -7,9 +7,12 @@ using System.Diagnostics.CodeAnalysis;
 using System.Diagnostics.ContractsLight;
 using System.Diagnostics.Tracing;
 using System.Globalization;
+using System.IO;
 using System.Linq;
+using System.Text;
 using BuildXL.Cache.ContentStore.Hashing;
 using BuildXL.Native.IO;
+using BuildXL.Pips.Filter;
 using BuildXL.Pips.Operations;
 using BuildXL.Processes;
 using BuildXL.Storage;
@@ -1385,6 +1388,17 @@ namespace BuildXL
                     startupConfiguration.ImplicitFilters.Add(arg);
                 }
 
+                // Bazel-style `build` / `run` / `test` subcommand. When the first positional
+                // argument is literally `build`, `run`, or `test`, translate it (and any
+                // following positional args) into a tag-based pip filter that selects pips
+                // emitted by the bxl_rules SDK (https://github.com/agocke/bxl_rules):
+                //   bxl build              -> /f:~(tag='bxl-kind:binary')and~(tag='bxl-kind:test')
+                //   bxl run                -> /f:tag='bxl-kind:binary'
+                //   bxl test               -> /f:tag='bxl-kind:test'
+                //   bxl <verb> <label> ... -> <verb filter> and (<label expansion>)
+                // If the user also passed an explicit /filter:, both are AND-ed together.
+                TryApplyRunOrTestSubcommand(configuration, startupConfiguration);
+
                 // We require a config file for non-server mode builds and if the user does not pass /setupJournal argument
                 if (configuration.Help == HelpLevel.None && Environment.GetEnvironmentVariable(Program.BuildXlAppServerConfigVariable) == null && !startupConfiguration.ConfigFile.IsValid)
                 {
@@ -1615,6 +1629,109 @@ namespace BuildXL
             {
                 throw CommandLineUtilities.Error(Strings.Args_Args_NotRecognized, unrecognizedOption.Name);
             }
+        }
+
+        /// <summary>
+        /// Tag emitted on pips produced by the bxl_rules SDK for binary-kind rules.
+        /// Selected by <c>bxl run</c>.
+        /// </summary>
+        internal const string BinaryKindTag = "bxl-kind:binary";
+
+        /// <summary>
+        /// Tag emitted on pips produced by the bxl_rules SDK for test-kind rules.
+        /// Selected by <c>bxl test</c>.
+        /// </summary>
+        internal const string TestKindTag = "bxl-kind:test";
+
+        /// <summary>
+        /// If the first implicit (positional) filter is the literal subcommand
+        /// <c>build</c>, <c>run</c>, or <c>test</c>, replace the implicit filters with
+        /// a single composed <see cref="ICommandLineConfiguration.Filter"/> expression
+        /// that selects (or excludes) pips by the corresponding bxl_rules tag, optionally
+        /// intersected with the standard label-style expansion of any remaining
+        /// positional args.
+        /// </summary>
+        private static void TryApplyRunOrTestSubcommand(
+            CommandLineConfiguration configuration,
+            StartupConfiguration startupConfiguration)
+        {
+            var implicitFilters = startupConfiguration.ImplicitFilters;
+            if (implicitFilters == null || implicitFilters.Count == 0)
+            {
+                return;
+            }
+
+            string first = implicitFilters[0];
+            string verbFilter;
+            if (string.Equals(first, "run", StringComparison.OrdinalIgnoreCase))
+            {
+                verbFilter = FormattableString.Invariant($"tag='{BinaryKindTag}'");
+            }
+            else if (string.Equals(first, "test", StringComparison.OrdinalIgnoreCase))
+            {
+                verbFilter = FormattableString.Invariant($"tag='{TestKindTag}'");
+            }
+            else if (string.Equals(first, "build", StringComparison.OrdinalIgnoreCase))
+            {
+                // `build` is the inverse: select everything that is NOT a run-time or
+                // test-time pip. Matches the table in the bxl_rules README.
+                verbFilter = FormattableString.Invariant($"~(tag='{BinaryKindTag}')and~(tag='{TestKindTag}')");
+            }
+            else
+            {
+                return;
+            }
+
+            // Consume the subcommand token. Remaining positional args are treated as labels.
+            var labels = implicitFilters.Skip(1).ToList();
+            implicitFilters.Clear();
+
+            string composed = verbFilter;
+
+            if (labels.Count > 0)
+            {
+                // Mirror the implicit-filter expansion in EngineSchedule.TryGetPipFilter so the
+                // same labels work whether or not the subcommand prefix is used.
+                var sb = new StringBuilder();
+                sb.Append('(');
+                for (int i = 0; i < labels.Count; i++)
+                {
+                    if (i > 0)
+                    {
+                        sb.Append(" or ");
+                    }
+
+                    string label = labels[i];
+                    if (label.StartsWith("*", StringComparison.OrdinalIgnoreCase))
+                    {
+                        sb.AppendFormat(CultureInfo.InvariantCulture, "output='{0}' or spec='{0}'", label);
+                    }
+                    else
+                    {
+                        sb.AppendFormat(
+                            CultureInfo.InvariantCulture,
+                            "output='*{0}{1}' or spec='*{0}{1}' or tag='{1}'",
+                            Path.DirectorySeparatorChar,
+                            label);
+                    }
+
+                    if (FilterParser.TryParsePipId(label, out _))
+                    {
+                        sb.AppendFormat(CultureInfo.InvariantCulture, " or id='{0}'", label);
+                    }
+                }
+
+                sb.Append(')');
+                composed = composed + " and " + sb.ToString();
+            }
+
+            // If the user also passed /filter:<expr>, intersect with the subcommand filter.
+            if (!string.IsNullOrEmpty(configuration.Filter))
+            {
+                composed = "(" + configuration.Filter + ") and (" + composed + ")";
+            }
+
+            configuration.Filter = composed;
         }
 
         /// <summary>
