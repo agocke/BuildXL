@@ -19,12 +19,16 @@ jobs:
         with:
           dotnet-version: '9.x'
 
+      - name: Enable USN journal
+        shell: cmd
+        run: fsutil usn createjournal m=0x20000000 a=0x8000000 %CD:~0,2%
+
       - name: BuildXL cache
         uses: actions/cache@v4
         with:
           path: ~/.cache/bxl
-          key: bxl-cache-win-v4-${{ github.sha }}
-          restore-keys: bxl-cache-win-v4-
+          key: bxl-cache-win-v5-${{ github.sha }}
+          restore-keys: bxl-cache-win-v5-
           save-always: true
 
       - name: Compute version
@@ -57,8 +61,6 @@ jobs:
         run: |
           bxl /c:config.dsc /server- `
             /cacheDirectory:$env:USERPROFILE\.cache\bxl `
-            /unsafe_DisableDetours+ `
-            /verifyJournalForEngineVolumes- `
             /q:Release `
             "/p:[Sdk.BuildXL]experimentalDeployment=1" `
             "/p:[BuildXL.Branding]SemanticVersion=${{ steps.version.outputs.SEMVER }}" `
