@@ -98,7 +98,5 @@ jobs:
         run: |
           bxl /c:config.dsc /server- `
             /cacheDirectory:$env:USERPROFILE\.cache\bxl `
-            /unsafe_DisableDetours+ `
-            /verifyJournalForEngineVolumes- `
             /q:Release `
             "/f:spec='*DotnetToolPackages*'"
