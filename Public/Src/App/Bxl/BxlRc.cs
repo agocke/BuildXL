@@ -28,21 +28,22 @@ namespace BuildXL
     /// whitespace on each line is trimmed.
     /// </para>
     /// <para>
-    /// Set the environment variable <c>BXL_NO_RC=1</c> to disable rc-file loading entirely.
+    /// Pass <c>/ignoreRcFiles</c> on the command line to disable rc-file loading entirely.
     /// </para>
     /// </remarks>
     internal static class BxlRc
     {
         internal const string RcFileName = ".bxlrc";
-        internal const string DisableEnvVar = "BXL_NO_RC";
+        internal const string DisableOptionName = "ignoreRcFiles";
 
         /// <summary>
         /// Returns the default arguments collected from <c>.bxlrc</c> files in discovery order.
-        /// Returns an empty array if no rc files are found or if rc loading is disabled.
+        /// Returns an empty array if no rc files are found or if rc loading is disabled by
+        /// the presence of <c>/ignoreRcFiles</c> in <paramref name="rawArgs"/>.
         /// </summary>
-        public static string[] LoadDefaultArgs()
+        public static string[] LoadDefaultArgs(string[] rawArgs)
         {
-            if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable(DisableEnvVar)))
+            if (HasDisableFlag(rawArgs))
             {
                 return Array.Empty<string>();
             }
@@ -62,6 +63,45 @@ namespace BuildXL
             }
 
             return result.ToArray();
+        }
+
+        /// <summary>
+        /// Scans <paramref name="rawArgs"/> for <c>/ignoreRcFiles</c> (or <c>-ignoreRcFiles</c>,
+        /// with optional trailing <c>+</c>/<c>-</c>). Returns true if the flag is present and
+        /// not explicitly set to <c>-</c>.
+        /// </summary>
+        private static bool HasDisableFlag(string[] rawArgs)
+        {
+            if (rawArgs == null)
+            {
+                return false;
+            }
+
+            foreach (string arg in rawArgs)
+            {
+                if (string.IsNullOrEmpty(arg) || (arg[0] != '/' && arg[0] != '-'))
+                {
+                    continue;
+                }
+
+                string body = arg.Substring(1);
+
+                // Strip an optional trailing +/- (treating /flag and /flag+ as "on",
+                // /flag- as "off").
+                bool value = true;
+                if (body.Length > 0 && (body[body.Length - 1] == '+' || body[body.Length - 1] == '-'))
+                {
+                    value = body[body.Length - 1] == '+';
+                    body = body.Substring(0, body.Length - 1);
+                }
+
+                if (string.Equals(body, DisableOptionName, StringComparison.OrdinalIgnoreCase))
+                {
+                    return value;
+                }
+            }
+
+            return false;
         }
 
         private static string GetHomeRcPath()

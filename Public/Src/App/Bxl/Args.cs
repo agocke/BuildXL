@@ -549,6 +549,9 @@ namespace BuildXL
                         OptionHandlerFactory.CreateBoolOption(
                             "honorDirectoryCasingOnDisk",
                             sign => configuration.Cache.HonorDirectoryCasingOnDisk = sign),
+                        OptionHandlerFactory.CreateBoolOption(
+                            "ignoreRcFiles",
+                            sign => { /* No-op: handled by BxlRc.LoadDefaultArgs before argument parsing. Listed here so the parser does not reject it. */ }),
                         OptionHandlerFactory.CreateOption(
                             "immediateWorkerRelease",
                             opt => distributionConfiguration.ImmediateWorkerRelease = CommandLineUtilities.ParseInt32Option(opt, 0, int.MaxValue)),

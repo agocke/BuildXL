@@ -49,7 +49,7 @@ namespace BuildXL
             // since the client has already done rc-file expansion in its own argv.
             if (Environment.GetEnvironmentVariable(BuildXlAppServerConfigVariable) == null)
             {
-                string[] rcArgs = BxlRc.LoadDefaultArgs();
+                string[] rcArgs = BxlRc.LoadDefaultArgs(rawArgs);
                 if (rcArgs.Length > 0)
                 {
                     var combined = new string[rcArgs.Length + rawArgs.Length];
