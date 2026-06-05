@@ -43,6 +43,22 @@ namespace BuildXL
             ServicePointManager.SecurityProtocol = ServicePointManager.SecurityProtocol | SecurityProtocolType.Tls12;
 #pragma warning restore SYSLIB0014 // Type or member is obsolete
 
+            // Splice in default arguments from .bxlrc files. These are prepended so that
+            // user-supplied command line arguments still win on "last-wins" options.
+            // Skip this when running as an app server (started by another bxl client),
+            // since the client has already done rc-file expansion in its own argv.
+            if (Environment.GetEnvironmentVariable(BuildXlAppServerConfigVariable) == null)
+            {
+                string[] rcArgs = BxlRc.LoadDefaultArgs(rawArgs);
+                if (rcArgs.Length > 0)
+                {
+                    var combined = new string[rcArgs.Length + rawArgs.Length];
+                    Array.Copy(rcArgs, 0, combined, 0, rcArgs.Length);
+                    Array.Copy(rawArgs, 0, combined, rcArgs.Length, rawArgs.Length);
+                    rawArgs = combined;
+                }
+            }
+
             Program p = new Program(rawArgs);
 
             // Note that we do not wrap Run in a catch-all exception handler. If we did, then last-chance handling (i.e., an 'unhandled exception'
