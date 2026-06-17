@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "isRoot": true,
+  "tools": {
+    "agtest.bxl.tool": {
+      "version": "0.2.0-ci.15.bdab17d",
+      "commands": [
+        "bxl"
+      ]
+    }
+  }
+}

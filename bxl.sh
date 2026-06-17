@@ -168,11 +168,59 @@ function installLkg() {
 }
 
 function getLkg() {
-    local LKG_FILE="BuildXLLkgVersionPublic.cmd"
-
+    # Internal path: use the legacy bootstrap (Microsoft.BuildXL.* package on the
+    # internal AzDO feed) that requires authentication.
     if [[ -n "$arg_Internal" ]]; then
-        local LKG_FILE="BuildXLLkgVersion.cmd"
+        getLkgFromLegacyBootstrap "BuildXLLkgVersion.cmd"
+        return
     fi
+
+    # Public path: acquire BuildXL via `dotnet tool restore` using the manifest at
+    # .config/dotnet-tools.json. This pulls agtest.bxl.tool from nuget.org with no
+    # auth required, and lets repo contributors bump the LKG just by editing the
+    # manifest.
+    getLkgFromDotnetToolManifest
+}
+
+function getLkgFromDotnetToolManifest() {
+    local manifest="$MY_DIR/.config/dotnet-tools.json"
+    if [[ ! -f "$manifest" ]]; then
+        print_error "Tool manifest not found at $manifest"
+        exit 1
+    fi
+
+    export DOTNET_NOLOGO=true
+
+    print_info "Restoring dotnet tools from $manifest"
+    (cd "$MY_DIR" && dotnet tool restore)
+
+    # Extract the agtest.bxl.tool version from the manifest. The actual binaries
+    # ship in the platform-specific dependency package agtest.bxl.tool.<rid>.
+    local toolVersion
+    toolVersion=$(python3 -c "import json; print(json.load(open('$manifest'))['tools']['agtest.bxl.tool']['version'])")
+    if [[ -z "$toolVersion" ]]; then
+        print_error "Could not read agtest.bxl.tool version from $manifest"
+        exit 1
+    fi
+
+    local nugetPackageRoot
+    nugetPackageRoot=$(dotnet nuget locals global-packages -l | cut -d: -f2- | tr -d ' ')
+
+    # agtest.bxl.tool.<rid>/<ver>/tools/net9.0/<rid> (lowercased per nuget cache convention).
+    local ridPackage="agtest.bxl.tool.${DeploymentFolder}"
+    local ridPackageLower
+    ridPackageLower=$(echo "$ridPackage" | tr '[:upper:]' '[:lower:]')
+    export BUILDXL_BIN="$nugetPackageRoot/$ridPackageLower/$toolVersion/tools/net9.0/${DeploymentFolder}"
+
+    if [[ ! -x "$BUILDXL_BIN/bxl" ]]; then
+        print_error "Expected bxl binary not found at $BUILDXL_BIN/bxl after dotnet tool restore"
+        exit 1
+    fi
+    print_info "LKG resolved at $BUILDXL_BIN (agtest.bxl.tool $toolVersion)"
+}
+
+function getLkgFromLegacyBootstrap() {
+    local LKG_FILE="$1"
 
     local BUILDXL_LKG_VERSION=$(grep "BUILDXL_LKG_VERSION" "$MY_DIR/Shared/Scripts/$LKG_FILE" | cut -d= -f2 | tr -d '\r')
     local BUILDXL_LKG_NAME=$(grep "BUILDXL_LKG_NAME" "$MY_DIR/Shared/Scripts/$LKG_FILE" | cut -d= -f2 | perl -pe 's/(net472|win-x64)/'${DeploymentFolder}'/g' | tr -d '\r')
